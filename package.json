@@ -3,5 +3,9 @@
   "version": "1.0.0",
   "displayName": "EventBus",
   "description": "",
-  "unity": "2019.1"
+  "unity": "2019.1",
+  "author": {
+    "name": "Daniel Loughmiller",
+    "url": "https://github.com/DanLGameDev/"
+  }
 }
