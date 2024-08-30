@@ -5,12 +5,12 @@ namespace Tests.Editor
 {
     public class EventBusTests
     {
-        public struct TestEvent : IEvent
+        private struct TestEvent : IEvent
         {
             public int TestValue;
         }
 
-        public class MockHandler
+        private class MockHandler
         {
             private EventBinding<TestEvent> binding;
             public int InvokeCount;
@@ -25,8 +25,8 @@ namespace Tests.Editor
                 LastTestValue = @event.TestValue;
             }
         }
-        
-        public class MockHandlerEmptyArgs
+
+        private class MockHandlerEmptyArgs
         {
             private EventBinding<TestEvent> binding;
             public int InvokeCount;
