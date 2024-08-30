@@ -53,3 +53,12 @@ public class MyClass
     }
 }
 ```
+
+Raise an event:
+```csharp
+//No args
+EventBus<MyEvent>.Raise();
+
+//With Args
+EventBus<MyEvent>.Raise(new MyEvent() { Message = "Event Data"; });
+```
