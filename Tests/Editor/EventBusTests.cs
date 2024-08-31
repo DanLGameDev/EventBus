@@ -1,7 +1,6 @@
-using DGP.EventBus.Runtime;
 using NUnit.Framework;
 
-namespace Tests.Editor
+namespace DGP.EventBus.Editor.Tests
 {
     public class EventBusTests
     {

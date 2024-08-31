@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using DGP.EventBus.Editor;
 
-namespace DGP.EventBus.Runtime
+namespace DGP.EventBus
 {
     public static class EventBus<T> where T : IEvent
     {
@@ -54,7 +54,7 @@ namespace DGP.EventBus.Runtime
         public static void Raise(T @event = default(T))
         {
             #if UNITY_EDITOR && ODIN_INSPECTOR
-                EventBusRegistry.RecordInvocation<T>();
+            EventBusRegistry.RecordInvocation<T>();
             #endif
             
             _isCurrentlyRaising = true;

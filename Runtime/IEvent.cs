@@ -1,4 +1,4 @@
-namespace DGP.EventBus.Runtime
+namespace DGP.EventBus
 {
     public interface IEvent
     {

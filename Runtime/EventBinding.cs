@@ -1,6 +1,6 @@
 using System;
 
-namespace DGP.EventBus.Runtime
+namespace DGP.EventBus
 {
     public class EventBinding<TEventType> where TEventType : IEvent
     {

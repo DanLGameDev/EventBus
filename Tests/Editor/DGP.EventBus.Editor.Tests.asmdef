@@ -1,5 +1,6 @@
 {
-    "name": "Editor",
+    "name": "DGP.EventBus.Editor.Tests",
+    "rootNamespace": "DGP.EventBus.Editor.Tests",
     "optionalUnityReferences": [
         "TestAssemblies"
     ],
