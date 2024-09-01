@@ -1,7 +1,10 @@
 using System.Collections.Generic;
-using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
+
+#if UNITY_EDITOR && ODIN_INSPECTOR
+using Sirenix.OdinInspector.Editor;
+#endif
 
 namespace DGP.EventBus.Editor
 {

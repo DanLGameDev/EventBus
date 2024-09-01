@@ -53,7 +53,7 @@ namespace DGP.EventBus
         /// <param name="event">The event to invoke</param>
         public static void Raise(T @event = default(T))
         {
-            #if UNITY_EDITOR && ODIN_INSPECTOR
+            #if UNITY_EDITOR
             EventBusRegistry.RecordInvocation<T>();
             #endif
             
