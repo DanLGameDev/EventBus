@@ -1,68 +1,11 @@
+#if ODIN_INSPECTOR
 using System.Collections.Generic;
+using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
 
-#if UNITY_EDITOR && ODIN_INSPECTOR
-using Sirenix.OdinInspector.Editor;
-#endif
-
 namespace DGP.EventBus.Editor
 {
-    public static class EventBusRegistry
-    {
-        private static List<EventTypeBusBase> busses = new();
-        private static Dictionary<string, float> busTimers = new();
-        
-        public static float GetLastInvocationTime(string name) {
-            if (busTimers.ContainsKey(name)) {
-                return busTimers[name];
-            }
-            return 0;
-        }
-        
-        public static IReadOnlyList<EventTypeBusBase> Busses => busses;
-        public static void RegisterBusType<T>() where T : IEvent {
-            busses.Add(new EventBusType<T>());
-            busses.Sort((a, b) => a.Name.CompareTo(b.Name));
-        }
-        
-        public static void RecordInvocation<T>() where T : IEvent {
-            var name = typeof(T).Name;
-            if (!busTimers.ContainsKey(name)) {
-                busTimers[name] = 0;
-            }
-            busTimers[name] = Time.realtimeSinceStartup;
-        }
-    }
-    
-    public abstract class EventTypeBusBase {
-        public abstract int BindingCount { get; }
-        public abstract string Name { get; }
-        public abstract List<string> GetBindingNames();
-    }
-
-    public class EventBusType<T> : EventTypeBusBase where T : IEvent
-    {
-        public override int BindingCount => EventBus<T>.Bindings.Count;
-        public override string Name => typeof(T).Name;
-        public override List<string> GetBindingNames() {
-            var bindings = EventBus<T>.Bindings;
-            var names = new List<string>();
-            foreach (var binding in bindings) {
-                if (binding.OnEventNoArgs != null && (binding.OnEventNoArgs.Method.Name.Contains("<.ctor>")==false)) {
-                    names.Add(binding.OnEventNoArgs.Method.DeclaringType?.Name + ":" + binding.OnEventNoArgs.Method.Name + "()");
-                } else if (binding.OnEvent != null && (binding.OnEvent.Method.Name.Contains("<.ctor>")==false)) {
-                    var method = binding.OnEvent.Method;
-                    names.Add(method.DeclaringType?.Name + ":" + method.Name + "(args)");
-                } else {
-                    names.Add("Unknown");
-                }
-            }
-            return names;
-        }
-    }
-    
-#if UNITY_EDITOR && ODIN_INSPECTOR
     public class EventBusDebuggerWindow : OdinEditorWindow
     {
         private readonly HashSet<string> openBusses = new();
@@ -146,5 +89,5 @@ namespace DGP.EventBus.Editor
             }
         }
     }
-#endif
 }
+#endif

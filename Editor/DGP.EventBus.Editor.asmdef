@@ -1,8 +1,12 @@
 {
-    "name": "DGP.EventBus",
-    "rootNamespace": "DGP.EventBus",
-    "references": [],
-    "includePlatforms": [],
+    "name": "DGP.EventBus.Editor",
+    "rootNamespace": "DGP.EventBus.Editor",
+    "references": [
+        "GUID:8bab9e6ab78e41289141994f17be5d4e"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using DGP.EventBus.Editor;
 
 namespace DGP.EventBus
 {
@@ -11,6 +10,12 @@ namespace DGP.EventBus
       
         // ReSharper disable once StaticMemberInGenericType
         private static bool _isCurrentlyRaising;
+        
+#if UNITY_EDITOR
+        static EventBus() {
+            EventBusRegistry.RegisterBusType<T>();
+        }
+#endif
 
         /// <summary>
         /// Registers an EventBinding to the EventBus
@@ -75,12 +80,5 @@ namespace DGP.EventBus
                 Bindings.Remove(binding);
             }
         }
-            
-        
-#if UNITY_EDITOR
-        static EventBus() {
-            EventBusRegistry.RegisterBusType<T>();
-        }
-#endif
     }
 }
