@@ -1,3 +1,8 @@
+## [1.1.1] - 2024-09-02
+### Changes
+- Editor script now in separate assembly
+- Some scripts moved to runtime assemble and separate files
+
 ## [1.0.7] - 2024-09-01
 ### Bug Fixes
 - Fixed issue where compilation error would occur if Odin Inspector wasn't present
