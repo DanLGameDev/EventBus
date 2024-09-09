@@ -14,7 +14,7 @@ public class MyClass
     
     public MyClass()
     {
-        _eventBinding = EventBus.Register<MyEvent>(OnMyEvent);
+        _eventBinding = new EventBinding<MyEvent>(OnMyEvent);
         EventBus<MyEvent>.Register(_eventBinding);
     }
     
@@ -38,7 +38,7 @@ public class MyClass
     
     public MyClass()
     {
-        _eventBinding = EventBus.Register<EmptyEvent>(OnEmptyEvent);
+        _eventBinding = new EventBinding<MyEvent>(OnMyEvent);
         EventBus<EmptyEvent>.Register(_eventBinding );
     }
     
