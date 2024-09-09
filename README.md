@@ -39,12 +39,12 @@ public class MyClass
     public MyClass()
     {
         _eventBinding = new EventBinding<MyEvent>(OnMyEvent);
-        EventBus<EmptyEvent>.Register(_eventBinding );
+        EventBus<MyEvent>.Register(_eventBinding );
     }
     
     ~MyClass()
     {
-        EventBus<EmptyEvent>.Deregister(_eventBinding);
+        EventBus<MyEvent>.Deregister(_eventBinding);
     }
     
     private void OnEmptyEvent()
