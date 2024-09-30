@@ -2,7 +2,8 @@
     "name": "DGP.EventBus.Editor",
     "rootNamespace": "DGP.EventBus.Editor",
     "references": [
-        "GUID:8bab9e6ab78e41289141994f17be5d4e"
+        "GUID:8bab9e6ab78e41289141994f17be5d4e",
+        "DGP.StackableInput"
     ],
     "includePlatforms": [
         "Editor"

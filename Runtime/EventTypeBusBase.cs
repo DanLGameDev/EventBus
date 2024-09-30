@@ -6,5 +6,6 @@ namespace DGP.EventBus
         public abstract int BindingCount { get; }
         public abstract string Name { get; }
         public abstract List<string> GetBindingNames();
+
     }
 }

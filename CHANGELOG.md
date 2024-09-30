@@ -1,3 +1,8 @@
+## [1.2.0] - 2024-09-25
+### Changes
+- Should now be safe to use with Domain Reload turned off as event busses are cleared when exiting play mode
+
+
 ## [1.1.1] - 2024-09-02
 ### Changes
 - Editor script now in separate assembly

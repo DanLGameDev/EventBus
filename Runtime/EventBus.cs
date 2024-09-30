@@ -16,6 +16,13 @@ namespace DGP.EventBus
             EventBusRegistry.RegisterBusType<T>();
         }
 #endif
+        
+        public static void Clear() {
+            Bindings.Clear();
+            BindingsPendingRemoval.Clear();
+        }
+        
+        
 
         /// <summary>
         /// Registers an EventBinding to the EventBus
