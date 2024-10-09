@@ -5,48 +5,59 @@ using UnityEngine;
 
 namespace DGP.EventBus
 {
+    /// <summary>
+    /// Manages and tracks different event bus types.
+    /// </summary>
     public static class EventBusRegistry
     {
-        private static List<EventTypeBusBase> busses = new();
-        public static IReadOnlyList<EventTypeBusBase> Busses => busses;
+        private static readonly List<EventTypeBusBase> Buses = new();
+        public static IReadOnlyList<EventTypeBusBase> RegisteredBuses => Buses;
+        private static readonly Dictionary<string, float> LastInvocationTimes = new();
+        private static readonly List<Type> BusTypes = new();
         
-        private static Dictionary<string, float> busTimers = new();
-        
-        private static List<Type> busTypes = new();
-        
+        /// <summary>
+        /// Clears all registered buses and their associated data.
+        /// </summary>
         public static void ClearAllBuses() {
-            Debug.Log("Cleaning up event buses");
-            foreach (var busType in busTypes) {
+            foreach (var busType in BusTypes) {
                 var method = busType.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
                 method?.Invoke(null, null);
             }
             
-            busTypes.Clear();
-            busses.Clear();
-            busTimers.Clear();
+            BusTypes.Clear();
+            Buses.Clear();
+            LastInvocationTimes.Clear();
         }
         
-        public static float GetLastInvocationTime(string name) {
-            if (busTimers.ContainsKey(name)) {
-                return busTimers[name];
-            }
-            return 0;
-        }
-        
-        
-        
+        /// <summary>
+        /// Gets the last invocation time for a given bus name.
+        /// </summary>
+        /// <param name="name">The name of the bus.</param>
+        /// <returns>The last invocation time, or 0 if not found.</returns>
+        public static float GetLastInvocationTime(string name) => LastInvocationTimes.GetValueOrDefault(name, 0);
+
+        /// <summary>
+        /// Registers a new bus type.
+        /// </summary>
+        /// <typeparam name="T">The event type for the bus.</typeparam>
         public static void RegisterBusType<T>() where T : IEvent {
-            busses.Add(new EventBusType<T>());
-            busTypes.Add(typeof(EventBus<T>));
-            busses.Sort((a, b) => a.Name.CompareTo(b.Name));
+            var busType = typeof(EventBus<T>);
+            if (BusTypes.Contains(busType))
+                return;
+            
+            Buses.Add(new EventBusType<T>());
+            BusTypes.Add(busType);
+            Buses.Sort((a, b) => String.Compare(a.Name, b.Name, StringComparison.Ordinal));
         }
         
+        /// <summary>
+        /// Records an invocation for a given event type.
+        /// </summary>
+        /// <typeparam name="T">The event type.</typeparam>
         public static void RecordInvocation<T>() where T : IEvent {
+            Debug.Log("Recording invocation for " + typeof(T).Name);
             var name = typeof(T).Name;
-            if (!busTimers.ContainsKey(name)) {
-                busTimers[name] = 0;
-            }
-            busTimers[name] = Time.realtimeSinceStartup;
+            LastInvocationTimes[name] = Time.realtimeSinceStartup;
         }
     }
 }

@@ -1,4 +1,3 @@
-#if ODIN_INSPECTOR
 using System.Collections.Generic;
 using Sirenix.OdinInspector.Editor;
 using UnityEditor;
@@ -7,88 +6,104 @@ using DGP.EventBus;
 
 namespace DGP.EventBus.Editor
 {
-    public class EventBusDebuggerWindow : OdinEditorWindow
+
+    public class EventBusDebuggerWindow : EditorWindow
     {
-        private readonly HashSet<string> openBusses = new();
-        private GUIStyle inactiveStyle;
-        
+        private readonly HashSet<string> _openBusses = new HashSet<string>();
+        private GUIStyle _inactiveStyle;
+        private const float FlashTime = 0.5f;
+
         [MenuItem("Tools/EventBus Monitor")]
-        private static void OpenWindow()
-        {
-            GetWindow<EventBusDebuggerWindow>().Show();
-        }
-        
-        private GUIStyle GetInactiveStyle() {
-            if (inactiveStyle == null) {
-                inactiveStyle = new GUIStyle(EditorStyles.label)
-                {
-                    normal =
-                    {
-                        textColor = Color.gray
-                    }
-                };
-            }
-            return inactiveStyle;
-        }
-        
-        private void Update() {
-            Repaint();
+        private static void OpenWindow() {
+            GetWindow<EventBusDebuggerWindow>("EventBus Monitor").Show();
         }
 
-        protected override void DrawEditors() {
-            base.DrawEditors();
-            
+        private void OnEnable()
+        {
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+        }
+
+        private void OnDisable()
+        {
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorApplication.update -= Repaint;
+        }
+        
+        private void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            switch (state)
+            {
+                case PlayModeStateChange.EnteredPlayMode:
+                    EditorApplication.update += Repaint;
+                    break;
+                case PlayModeStateChange.ExitingPlayMode:
+                    EditorApplication.update -= Repaint;
+                    break;
+            }
+        }
+
+        private GUIStyle GetInactiveStyle() {
+            if (_inactiveStyle == null) {
+                _inactiveStyle = new GUIStyle(EditorStyles.label)
+                {
+                    normal = { textColor = Color.gray }
+                };
+            }
+
+            return _inactiveStyle;
+        }
+
+        private void OnGUI() {
             if (!Application.isPlaying) {
-                GUI.Label(new Rect(10, 10, position.width - 20, 20), "EventBus Monitor is only active at runtime", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("EventBus Monitor is only active at runtime", EditorStyles.boldLabel);
                 return;
             }
-            
-            var busses = EventBusRegistry.Busses;
-            
+
+            var busses = EventBusRegistry.RegisteredBuses;
+
             foreach (var bus in busses) {
-                if (bus.BindingCount>0)
+                if (bus.BindingCount > 0)
                     DrawBus(bus);
             }
-            
+
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Inactive");
 
             GUIStyle style = GetInactiveStyle();
             foreach (var bus in busses) {
-                if (bus.BindingCount==0)
+                if (bus.BindingCount == 0)
                     EditorGUILayout.LabelField(bus.Name, style);
             }
         }
-        
-        const float flashTime = 0.5f;
 
         private void DrawBus(EventTypeBusBase bus) {
-            var isOpen = openBusses.Contains(bus.Name);
-            
-            isOpen = EditorGUILayout.Foldout(isOpen, bus.Name + " (" + bus.BindingCount + ")", true);
-            
-            var lastInvokeTime = EventBusRegistry.GetLastInvocationTime(bus.Name);
-            
-            if (Time.realtimeSinceStartup - lastInvokeTime < flashTime) {
-                var rect = GUILayoutUtility.GetLastRect();
-                var alpha = Mathf.Lerp(0.5f, 0f, (Time.realtimeSinceStartup - lastInvokeTime) / flashTime);
-                EditorGUI.DrawRect(new Rect(0, rect.y, position.width, rect.height), new Color(1, 1, 0, alpha));
+            var isOpen = _openBusses.Contains(bus.Name);
+
+            Rect foldoutRect = EditorGUILayout.GetControlRect();
+
+            // Draw flash effect
+            if (EventBusRegistry.GetLastInvocationTime(bus.Name) > 0) {
+                double timeSinceInvoke = Time.realtimeSinceStartup - EventBusRegistry.GetLastInvocationTime(bus.Name);
+                if (timeSinceInvoke < FlashTime) {
+                    float alpha = 1f - (float)(timeSinceInvoke / FlashTime);
+                    EditorGUI.DrawRect(foldoutRect, new Color(1, 1, 0, alpha * 0.3f));
+                }
             }
             
+            isOpen = EditorGUI.Foldout(foldoutRect, isOpen, $"{bus.Name} ({bus.BindingCount})", true);
+
             if (isOpen) {
-                openBusses.Add(bus.Name);
-            } else {
-                openBusses.Remove(bus.Name);
-            }
-            
-            if (isOpen) {
+                _openBusses.Add(bus.Name);
                 EditorGUI.indentLevel++;
                 foreach (var bindingName in bus.GetBindingNames()) {
                     EditorGUILayout.LabelField(bindingName);
                 }
+
                 EditorGUI.indentLevel--;
+            }
+            else {
+                _openBusses.Remove(bus.Name);
             }
         }
     }
 }
-#endif

@@ -1,3 +1,9 @@
+## [1.3.0] - 2024-10-08
+### Changes
+- EventBus Monitor no longer dependent on Odin Inspector
+- Updated member naming conventions to be more inline with C# standards
+- Added XML documentation to public members
+
 ## [1.2.0] - 2024-09-25
 ### Changes
 - Should now be safe to use with Domain Reload turned off as event busses are cleared when exiting play mode
