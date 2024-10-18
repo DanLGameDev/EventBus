@@ -1,3 +1,7 @@
+## [1.3.2] - 2024-10-18
+### Changes
+- EventBindingContainers can now be created to act as local eventbuses
+
 ## [1.3.0] - 2024-10-08
 ### Changes
 - EventBus Monitor no longer dependent on Odin Inspector

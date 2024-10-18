@@ -3,33 +3,30 @@ using System.Collections.Generic;
 
 namespace DGP.EventBus
 {
-    /// <summary>
-    /// Represents a static event bus for events of type <typeparamref name="T"/>.
-    /// </summary>
-    /// <typeparam name="T">The type of event to be handled, must implement IEvent.</typeparam>
-    public static class EventBus<T> where T : IEvent
+    public class EventBindingContainer<T> where T : IEvent
     {
-        private static EventBindingContainer<T> _eventBindingContainer = new();
+        private readonly HashSet<EventBinding<T>> _bindings = new();
+        private readonly List<EventBinding<T>> _bindingsPendingRemoval = new();
         
-        internal static HashSet<EventBinding<T>> Bindings => _eventBindingContainer.Bindings;
+        internal HashSet<EventBinding<T>> Bindings => _bindings;
+        internal List<EventBinding<T>> BindingsPendingRemoval => _bindingsPendingRemoval;
       
         // ReSharper disable once StaticMemberInGenericType
-        //private static bool _isCurrentlyRaising;
+        private static bool _isCurrentlyRaising;
         
-        static EventBus() {
-#if UNITY_EDITOR
-            EventBusRegistry.RegisterBusType<T>();
-#endif
-        }
-        
+
         #region Registration
         /// <summary>
         /// Registers an EventBinding to the EventBus
         /// </summary>
         /// <param name="binding">The event binding to register.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="binding"/> is null.</exception>
-        public static EventBinding<T> Register(EventBinding<T> binding) {
-            return _eventBindingContainer.Register(binding);
+        public EventBinding<T> Register(EventBinding<T> binding) {
+            if (binding == null)
+                throw new ArgumentNullException(nameof(binding));
+            
+            _bindings.Add(binding);
+            return binding;
         }
         
         /// <summary>
@@ -38,7 +35,7 @@ namespace DGP.EventBus
         /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
-        public static EventBinding<T> Register(Action<T> onEvent) {
+        public EventBinding<T> Register(Action<T> onEvent) {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
             
@@ -51,7 +48,7 @@ namespace DGP.EventBus
         /// <param name="onEventNoArgs">The Action to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
-        public static EventBinding<T> Register(Action onEventNoArgs) {
+        public EventBinding<T> Register(Action onEventNoArgs) {
             if (onEventNoArgs == null)
                 throw new ArgumentNullException(nameof(onEventNoArgs));
             
@@ -63,29 +60,54 @@ namespace DGP.EventBus
         /// </summary>
         /// <param name="binding">The binding to deregister</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="binding"/> is null.</exception>
-        public static void Deregister(EventBinding<T> binding) {
-            _eventBindingContainer.Deregister(binding);
+        public void Deregister(EventBinding<T> binding) {
+            if (binding == null)
+                throw new ArgumentNullException(nameof(binding));
+            
+            if (_isCurrentlyRaising) {
+                if (!_bindingsPendingRemoval.Contains(binding))
+                    _bindingsPendingRemoval.Add(binding);
+                
+                return;
+            }
+            
+            _bindings.Remove(binding);
         }
         #endregion
         
         /// <summary>
         /// Clears all event bindings from the EventBus
         /// </summary>
-        public static void ClearAllBindings() {
-            _eventBindingContainer.ClearAllBindings();
+        public void ClearAllBindings() {
+            _bindings.Clear();
+            _bindingsPendingRemoval.Clear();
         }
         
         /// <summary>
         /// Raises the event, invoking all registered event bindings
         /// </summary>
         /// <param name="event">The event to invoke</param>
-        public static void Raise(T @event = default)
+        public void Raise(T @event = default)
         {
-            #if UNITY_EDITOR
-            EventBusRegistry.RecordInvocation<T>();
-            #endif
+            _isCurrentlyRaising = true;
+            InvokeBindings(@event);
+            _isCurrentlyRaising = false;
             
-            _eventBindingContainer.Raise(@event);
+            ProcessPendingRemovals();
+        }
+
+        private void InvokeBindings(T @event) {
+            foreach (var binding in _bindings) {
+                binding.Invoke(@event);
+            }
+        }
+        
+        private void ProcessPendingRemovals() {
+            foreach (var binding in _bindingsPendingRemoval) {
+                _bindings.Remove(binding);
+            }
+            
+            _bindingsPendingRemoval.Clear();
         }
     }
 }
