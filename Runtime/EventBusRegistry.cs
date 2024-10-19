@@ -55,7 +55,6 @@ namespace DGP.EventBus
         /// </summary>
         /// <typeparam name="T">The event type.</typeparam>
         public static void RecordInvocation<T>() where T : IEvent {
-            Debug.Log("Recording invocation for " + typeof(T).Name);
             var name = typeof(T).Name;
             LastInvocationTimes[name] = Time.realtimeSinceStartup;
         }
