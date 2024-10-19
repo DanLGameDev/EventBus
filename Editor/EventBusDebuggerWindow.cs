@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace DGP.EventBus.Editor
 {
-
     public class EventBusDebuggerWindow : EditorWindow
     {
         private readonly HashSet<string> _openBusses = new HashSet<string>();
