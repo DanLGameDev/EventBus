@@ -11,7 +11,7 @@ namespace DGP.EventBus
     {
         private static EventBindingContainer<T> _eventBindingContainer = new();
         
-        internal static HashSet<EventBinding<T>> Bindings => _eventBindingContainer.Bindings;
+        internal static List<EventBinding<T>> Bindings => _eventBindingContainer.Bindings;
       
         // ReSharper disable once StaticMemberInGenericType
         //private static bool _isCurrentlyRaising;

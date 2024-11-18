@@ -5,16 +5,13 @@ namespace DGP.EventBus
 {
     public class EventBindingContainer<T> where T : IEvent
     {
-        private readonly HashSet<EventBinding<T>> _bindings = new();
+        private readonly List<EventBinding<T>> _bindings = new();
         private readonly List<EventBinding<T>> _bindingsPendingRemoval = new();
         
-        internal HashSet<EventBinding<T>> Bindings => _bindings;
-        internal List<EventBinding<T>> BindingsPendingRemoval => _bindingsPendingRemoval;
-      
-        // ReSharper disable once StaticMemberInGenericType
-        private static bool _isCurrentlyRaising;
+        internal List<EventBinding<T>> Bindings => _bindings;
         
-
+        private bool _isCurrentlyRaising;
+        
         #region Registration
         /// <summary>
         /// Registers an EventBinding to the EventBus
