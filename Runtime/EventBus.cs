@@ -13,9 +13,6 @@ namespace DGP.EventBus
         
         internal static List<EventBinding<T>> Bindings => _eventBindingContainer.Bindings;
       
-        // ReSharper disable once StaticMemberInGenericType
-        //private static bool _isCurrentlyRaising;
-        
         static EventBus() {
 #if UNITY_EDITOR
             EventBusRegistry.RegisterBusType<T>();
@@ -28,7 +25,7 @@ namespace DGP.EventBus
         /// </summary>
         /// <param name="binding">The event binding to register.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="binding"/> is null.</exception>
-        public static EventBinding<T> Register(EventBinding<T> binding) {
+        public static EventBinding<T> Register(EventBinding<T> binding, bool repeastLastRaisedValue = false) {
             return _eventBindingContainer.Register(binding);
         }
         
@@ -38,7 +35,7 @@ namespace DGP.EventBus
         /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
-        public static EventBinding<T> Register(Action<T> onEvent) {
+        public static EventBinding<T> Register(Action<T> onEvent, bool repeastLastRaisedValue = false) {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
             

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 
 namespace DGP.EventBus
 {
@@ -12,17 +13,25 @@ namespace DGP.EventBus
         
         private bool _isCurrentlyRaising;
         
+        [CanBeNull] private T _lastRaisedValue;
+        [CanBeNull] public T LastRaisedValue => _lastRaisedValue;
+        
         #region Registration
         /// <summary>
         /// Registers an EventBinding to the EventBus
         /// </summary>
         /// <param name="binding">The event binding to register.</param>
+        /// <param name="repeastLastRaisedValue">If true and this event has been previously raised
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="binding"/> is null.</exception>
-        public EventBinding<T> Register(EventBinding<T> binding) {
+        public EventBinding<T> Register(EventBinding<T> binding, bool repeastLastRaisedValue = false) {
             if (binding == null)
                 throw new ArgumentNullException(nameof(binding));
             
             _bindings.Add(binding);
+            
+            if (repeastLastRaisedValue && _lastRaisedValue != null)
+                binding.Invoke(_lastRaisedValue);
+            
             return binding;
         }
         
@@ -32,11 +41,11 @@ namespace DGP.EventBus
         /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
-        public EventBinding<T> Register(Action<T> onEvent) {
+        public EventBinding<T> Register(Action<T> onEvent, bool repeastLastRaisedValue = false) {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
             
-            return Register(new EventBinding<T>(onEvent));
+            return Register(new EventBinding<T>(onEvent), repeastLastRaisedValue);
         }
 
         /// <summary>

@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 
 namespace DGP.EventBus.Editor.Tests
@@ -51,6 +52,21 @@ namespace DGP.EventBus.Editor.Tests
             var handler = new MockHandlerEmptyArgs();
             EventBus<TestEvent>.Raise(new TestEvent {TestValue = 42});
             Assert.AreEqual(1, handler.InvokeCount);
+        }
+        
+        
+        // Test Cached Value
+        [Test]
+        public void TestCachedValueEvent()
+        {
+            var handler = new MockHandlerEmptyArgs();
+            EventBus<TestEvent>.Raise(new TestEvent {TestValue = 42});
+
+            TestEvent? lastValue = null;
+            Action<TestEvent> callback = (e) => lastValue = e;
+
+            EventBus<TestEvent>.Register(callback, true);
+
         }
     }
 }
