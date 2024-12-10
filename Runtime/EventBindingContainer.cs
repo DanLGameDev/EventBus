@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using JetBrains.Annotations;
 
 namespace DGP.EventBus
 {
@@ -12,9 +11,9 @@ namespace DGP.EventBus
         internal List<EventBinding<T>> Bindings => _bindings;
         
         private bool _isCurrentlyRaising;
-        
-        [CanBeNull] private T _lastRaisedValue;
-        [CanBeNull] public T LastRaisedValue => _lastRaisedValue;
+
+        private T _lastRaisedValue = default(T);
+        public T LastRaisedValue => _lastRaisedValue;
         
         #region Registration
         /// <summary>
@@ -29,7 +28,7 @@ namespace DGP.EventBus
             
             _bindings.Add(binding);
             
-            if (repeastLastRaisedValue && _lastRaisedValue != null)
+            if (repeastLastRaisedValue)
                 binding.Invoke(_lastRaisedValue);
             
             return binding;
@@ -87,6 +86,8 @@ namespace DGP.EventBus
         public void ClearAllBindings() {
             _bindings.Clear();
             _bindingsPendingRemoval.Clear();
+            
+            _lastRaisedValue = default(T);
         }
         
         /// <summary>
