@@ -2,7 +2,6 @@ using UnityEditor;
 
 namespace DGP.EventBus.Editor
 {
-    // Utility class for managing EventBus lifecycle in the Unity editor.
     public static class EventBusEditorUtil
     {
         [InitializeOnLoadMethod]
@@ -15,5 +14,7 @@ namespace DGP.EventBus.Editor
             if (state == UnityEditor.PlayModeStateChange.ExitingPlayMode)
                 EventBusRegistry.ClearAllBuses();
         }
+        
+        
     }
 }

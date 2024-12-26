@@ -1,13 +1,10 @@
 {
-    "name": "DGP.EventBus.Editor",
-    "rootNamespace": "DGP.EventBus.Editor",
+    "name": "EventBus.Bridges",
+    "rootNamespace": "DGP.EventBus.Bridges",
     "references": [
-        "GUID:8bab9e6ab78e41289141994f17be5d4e",
-        "EventBus.Bridges"
+        "GUID:8bab9e6ab78e41289141994f17be5d4e"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
