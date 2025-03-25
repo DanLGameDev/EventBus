@@ -38,7 +38,7 @@ namespace DGP.EventBus
         /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
-        public static EventBinding Register(Action<T> onEvent) {
+        public static EventBinding<T> Register(Action<T> onEvent) {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
 
@@ -54,7 +54,7 @@ namespace DGP.EventBus
         /// <param name="onEventNoArgs">The Action to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
-        public static EventBinding Register(Action onEventNoArgs) {
+        public static EventBinding<T> Register(Action onEventNoArgs) {
             if (onEventNoArgs == null)
                 throw new ArgumentNullException(nameof(onEventNoArgs));
             
