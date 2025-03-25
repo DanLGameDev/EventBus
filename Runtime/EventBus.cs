@@ -11,6 +11,9 @@ namespace DGP.EventBus
     {
         private static EventBindingContainer<T> _eventBindingContainer = new();
         
+        private static Dictionary<Action<T>, EventBinding<T>> _registeredHandlers = new();
+        private static Dictionary<Action, EventBinding<T>> _registeredNoArgHandlers = new();
+        
         internal static List<EventBinding<T>> Bindings => _eventBindingContainer.Bindings;
       
         static EventBus() {
@@ -25,7 +28,7 @@ namespace DGP.EventBus
         /// </summary>
         /// <param name="binding">The event binding to register.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="binding"/> is null.</exception>
-        public static EventBinding<T> Register(EventBinding<T> binding, bool repeastLastRaisedValue = false) {
+        public static EventBinding<T> Register(EventBinding<T> binding) {
             return _eventBindingContainer.Register(binding);
         }
         
@@ -35,11 +38,14 @@ namespace DGP.EventBus
         /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
-        public static EventBinding<T> Register(Action<T> onEvent, bool repeastLastRaisedValue = false) {
+        public static EventBinding Register(Action<T> onEvent) {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
+
+            var handler = new EventBinding<T>(onEvent);
+            _registeredHandlers.Add(onEvent, handler);
             
-            return Register(new EventBinding<T>(onEvent));
+            return Register(handler);
         }
 
         /// <summary>
@@ -48,11 +54,14 @@ namespace DGP.EventBus
         /// <param name="onEventNoArgs">The Action to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
-        public static EventBinding<T> Register(Action onEventNoArgs) {
+        public static EventBinding Register(Action onEventNoArgs) {
             if (onEventNoArgs == null)
                 throw new ArgumentNullException(nameof(onEventNoArgs));
             
-            return Register(new EventBinding<T>(onEventNoArgs));
+            var handler = new EventBinding<T>(onEventNoArgs);
+            _registeredNoArgHandlers.Add(onEventNoArgs, handler);
+            
+            return Register(handler);
         }
 
         /// <summary>
@@ -63,7 +72,26 @@ namespace DGP.EventBus
         public static void Deregister(EventBinding<T> binding) {
             _eventBindingContainer.Deregister(binding);
         }
-        #endregion
+        
+        public static void Deregister(Action<T> onEvent) {
+            if (onEvent == null)
+                throw new ArgumentNullException(nameof(onEvent));
+            
+            if (_registeredHandlers.TryGetValue(onEvent, out var binding)) {
+                Deregister(binding);
+                _registeredHandlers.Remove(onEvent);
+            }
+        }
+        
+        public static void Deregister(Action onEventNoArgs) {
+            if (onEventNoArgs == null)
+                throw new ArgumentNullException(nameof(onEventNoArgs));
+            
+            if (_registeredNoArgHandlers.TryGetValue(onEventNoArgs, out var binding)) {
+                Deregister(binding);
+                _registeredNoArgHandlers.Remove(onEventNoArgs);
+            }
+        }
         
         /// <summary>
         /// Clears all event bindings from the EventBus
@@ -71,6 +99,7 @@ namespace DGP.EventBus
         public static void ClearAllBindings() {
             _eventBindingContainer.ClearAllBindings();
         }
+        #endregion
         
         /// <summary>
         /// Raises the event, invoking all registered event bindings
