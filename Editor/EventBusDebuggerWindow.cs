@@ -17,7 +17,11 @@ namespace DGP.EventBus.Editor
 
         private void OnEnable()
         {
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            
+            EditorApplication.update -= Repaint;
+            EditorApplication.update += Repaint;
         }
 
         private void OnDisable()
@@ -31,6 +35,7 @@ namespace DGP.EventBus.Editor
             switch (state)
             {
                 case PlayModeStateChange.EnteredPlayMode:
+                    EditorApplication.update -= Repaint;
                     EditorApplication.update += Repaint;
                     break;
                 case PlayModeStateChange.ExitingPlayMode:
