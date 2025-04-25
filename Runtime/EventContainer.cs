@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DGP.EventBus
 {
@@ -92,6 +93,46 @@ namespace DGP.EventBus
         public TEvent GetLastRaisedValue<TEvent>() where TEvent : IEvent
         {
             return GetContainer<TEvent>().LastRaisedValue;
+        }
+        
+        
+        // Added async registration methods
+        public EventBinding<TEvent> Register<TEvent>(Func<TEvent, Task> onEventAsync, int priority = 0, bool repeatLastRaisedValue = false) where TEvent : IEvent
+        {
+            if (onEventAsync == null)
+                throw new ArgumentNullException(nameof(onEventAsync));
+                
+            return GetContainer<TEvent>().Register(onEventAsync, priority, repeatLastRaisedValue);
+        }
+        
+        public EventBinding<TEvent> Register<TEvent>(Func<Task> onEventNoArgsAsync, int priority = 0) where TEvent : IEvent
+        {
+            if (onEventNoArgsAsync == null)
+                throw new ArgumentNullException(nameof(onEventNoArgsAsync));
+                
+            return GetContainer<TEvent>().Register(onEventNoArgsAsync, priority);
+        }
+        
+        public void Deregister<TEvent>(Func<TEvent, Task> onEventAsync) where TEvent : IEvent
+        {
+            if (onEventAsync == null)
+                throw new ArgumentNullException(nameof(onEventAsync));
+                
+            GetContainer<TEvent>().Deregister(onEventAsync);
+        }
+        
+        public void Deregister<TEvent>(Func<Task> onEventNoArgsAsync) where TEvent : IEvent
+        {
+            if (onEventNoArgsAsync == null)
+                throw new ArgumentNullException(nameof(onEventNoArgsAsync));
+                
+            GetContainer<TEvent>().Deregister(onEventNoArgsAsync);
+        }
+        
+        // Added async raise method
+        public async Task RaiseAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
+        {
+            await GetContainer<TEvent>().RaiseAsync(@event);
         }
     }
 }

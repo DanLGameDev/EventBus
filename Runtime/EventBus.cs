@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DGP.EventBus
 {
-    /// <summary>
-    /// Represents a static event bus for events of type <typeparamref name="T"/>.
-    /// </summary>
-    /// <typeparam name="T">The type of event to be handled, must implement IEvent.</typeparam>
     public static class EventBus<T> where T : IEvent
     {
         internal static EventBindingContainer<T> _eventBindingContainer = new();
@@ -22,8 +19,6 @@ namespace DGP.EventBus
         /// <summary>
         /// Registers an EventBinding to the EventBus
         /// </summary>
-        /// <param name="binding">The event binding to register.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="binding"/> is null.</exception>
         public static EventBinding<T> Register(EventBinding<T> binding) {
             return _eventBindingContainer.Register(binding);
         }
@@ -31,30 +26,34 @@ namespace DGP.EventBus
         /// <summary>
         /// Registers an action of a given event type to the EventBus and returns the binding
         /// </summary>
-        /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
-        /// <param name="priority">The priority of the event binding. Higher values are invoked first.</param>
-        /// <returns>The event binding created by this method</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
         public static EventBinding<T> Register(Action<T> onEvent, int priority = 0) {
             return _eventBindingContainer.Register(onEvent, priority);
+        }
+        
+        /// <summary>
+        /// Registers an async function of a given event type to the EventBus and returns the binding
+        /// </summary>
+        public static EventBinding<T> Register(Func<T, Task> onEventAsync, int priority = 0) {
+            return _eventBindingContainer.Register(onEventAsync, priority);
         }
 
         /// <summary>
         /// Registers an action with no arguments to the EventBus and returns the binding
         /// </summary>
-        /// <param name="onEventNoArgs">The Action to invoke when the event occurs</param>
-        /// <param name="priority">The priority of the event binding. Higher values are invoked first.</param>
-        /// <returns>The event binding created by this method</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
         public static EventBinding<T> Register(Action onEventNoArgs, int priority = 0) {
             return _eventBindingContainer.Register(onEventNoArgs, priority);
+        }
+        
+        /// <summary>
+        /// Registers an async function with no arguments to the EventBus and returns the binding
+        /// </summary>
+        public static EventBinding<T> Register(Func<Task> onEventNoArgsAsync, int priority = 0) {
+            return _eventBindingContainer.Register(onEventNoArgsAsync, priority);
         }
 
         /// <summary>
         /// De-registers an event binding from the EventBus
         /// </summary>
-        /// <param name="binding">The binding to deregister</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="binding"/> is null.</exception>
         public static void Deregister(EventBinding<T> binding) {
             _eventBindingContainer.Deregister(binding);
         }
@@ -62,19 +61,29 @@ namespace DGP.EventBus
         /// <summary>
         /// De-registers an action handler from the EventBus
         /// </summary>
-        /// <param name="onEvent">The action to deregister</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
         public static void Deregister(Action<T> onEvent) {
             _eventBindingContainer.Deregister(onEvent);
         }
         
         /// <summary>
+        /// De-registers an async function handler from the EventBus
+        /// </summary>
+        public static void Deregister(Func<T, Task> onEventAsync) {
+            _eventBindingContainer.Deregister(onEventAsync);
+        }
+        
+        /// <summary>
         /// De-registers an action with no arguments from the EventBus
         /// </summary>
-        /// <param name="onEventNoArgs">The action to deregister</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
         public static void Deregister(Action onEventNoArgs) {
             _eventBindingContainer.Deregister(onEventNoArgs);
+        }
+        
+        /// <summary>
+        /// De-registers an async function with no arguments from the EventBus
+        /// </summary>
+        public static void Deregister(Func<Task> onEventNoArgsAsync) {
+            _eventBindingContainer.Deregister(onEventNoArgsAsync);
         }
         
         /// <summary>
@@ -86,9 +95,8 @@ namespace DGP.EventBus
         #endregion
         
         /// <summary>
-        /// Raises the event, invoking all registered event bindings
+        /// Raises the event, invoking all registered event bindings synchronously
         /// </summary>
-        /// <param name="event">The event to invoke</param>
         public static void Raise(T @event = default)
         {
             #if UNITY_EDITOR
@@ -99,9 +107,20 @@ namespace DGP.EventBus
         }
         
         /// <summary>
+        /// Raises the event, invoking all registered event bindings asynchronously
+        /// </summary>
+        public static async Task RaiseAsync(T @event = default)
+        {
+            #if UNITY_EDITOR
+            EventBusRegistry.RecordInvocation<T>();
+            #endif
+            
+            await _eventBindingContainer.RaiseAsync(@event);
+        }
+        
+        /// <summary>
         /// Gets the last value raised on this event bus.
         /// </summary>
-        /// <returns>The last raised value, or default if none.</returns>
         public static T GetLastRaisedValue()
         {
             return _eventBindingContainer.LastRaisedValue;
