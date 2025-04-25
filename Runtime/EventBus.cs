@@ -32,20 +32,22 @@ namespace DGP.EventBus
         /// Registers an action of a given event type to the EventBus and returns the binding
         /// </summary>
         /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
+        /// <param name="priority">The priority of the event binding. Higher values are invoked first.</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
-        public static EventBinding<T> Register(Action<T> onEvent) {
-            return _eventBindingContainer.Register(onEvent);
+        public static EventBinding<T> Register(Action<T> onEvent, int priority = 0) {
+            return _eventBindingContainer.Register(onEvent, priority);
         }
 
         /// <summary>
         /// Registers an action with no arguments to the EventBus and returns the binding
         /// </summary>
         /// <param name="onEventNoArgs">The Action to invoke when the event occurs</param>
+        /// <param name="priority">The priority of the event binding. Higher values are invoked first.</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
-        public static EventBinding<T> Register(Action onEventNoArgs) {
-            return _eventBindingContainer.Register(onEventNoArgs);
+        public static EventBinding<T> Register(Action onEventNoArgs, int priority = 0) {
+            return _eventBindingContainer.Register(onEventNoArgs, priority);
         }
 
         /// <summary>

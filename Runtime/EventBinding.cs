@@ -4,12 +4,14 @@ namespace DGP.EventBus
     public class EventBinding
     {
         internal readonly Action OnEventNoArgs = () => { };
+        internal int Priority { get; }
 
-        protected EventBinding(Action eventNoArgs) {
+        protected EventBinding(Action eventNoArgs, int priority = 0) {
             if (eventNoArgs != null)
                 OnEventNoArgs = eventNoArgs;
+            Priority = priority;
         }
-        
+    
         public void Invoke() {
             OnEventNoArgs.Invoke();
         }
@@ -25,37 +27,18 @@ namespace DGP.EventBus
     {
         internal readonly Action<TEventType> OnEvent = _ => { };
         
-#region Constructors
-        /// <summary>
-        /// Initializes a new instance of the <see cref="EventBinding{TEventType}"/> class with an event handler that takes event arguments.
-        /// </summary>
-        /// <param name="event">The event handler to be invoked with event arguments.</param>
-        public EventBinding(Action<TEventType> @event) : base(null) {
+        public EventBinding(Action<TEventType> @event, int priority = 0) : base(null, priority) {
             if (@event != null)
                 OnEvent = @event;
         }
-        
-        /// <summary>
-        /// Initializes a new instance of the <see cref="EventBinding{TEventType}"/> class with an event handler that takes no arguments.
-        /// </summary>
-        /// <param name="eventNoArgs">The event handler to be invoked without arguments.</param>
-        public EventBinding(Action eventNoArgs) : base(eventNoArgs) { }
-        
-        /// <summary>
-        /// Initializes a new instance of the <see cref="EventBinding{TEventType}"/> class with both types of event handlers.
-        /// </summary>
-        /// <param name="event">The event handler to be invoked with event arguments.</param>
-        /// <param name="eventNoArgs">The event handler to be invoked without arguments.</param>
-        public EventBinding(Action<TEventType> @event, Action eventNoArgs) : base(eventNoArgs) {
+    
+        public EventBinding(Action eventNoArgs, int priority = 0) : base(eventNoArgs, priority) { }
+    
+        public EventBinding(Action<TEventType> @event, Action eventNoArgs, int priority = 0) : base(eventNoArgs, priority) {
             if (@event != null)
                 OnEvent = @event;
         }
-#endregion
-        
-        /// <summary>
-        /// Invokes the bound event handlers.
-        /// </summary>
-        /// <param name="event">The event arguments to pass to the handler that accepts arguments.</param>
+    
         public void Invoke(TEventType @event) {
             base.Invoke();
             OnEvent.Invoke(@event);

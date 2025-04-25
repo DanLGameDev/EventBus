@@ -28,20 +28,21 @@ namespace DGP.EventBus
             return GetContainer<TEvent>().Register(binding, repeatLastRaisedValue);
         }
 
-        public EventBinding<TEvent> Register<TEvent>(Action<TEvent> onEvent, bool repeatLastRaisedValue = false) where TEvent : IEvent
+        public EventBinding<TEvent> Register<TEvent>(Action<TEvent> onEvent, int priority = 0, bool repeatLastRaisedValue = false) where TEvent : IEvent
         {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
-                
-            return GetContainer<TEvent>().Register(onEvent, repeatLastRaisedValue);
+        
+            // Use the container's register method directly instead of creating a new binding first
+            return GetContainer<TEvent>().Register(onEvent, priority, repeatLastRaisedValue);
         }
 
-        public EventBinding<TEvent> Register<TEvent>(Action onEventNoArgs) where TEvent : IEvent
+        public EventBinding<TEvent> Register<TEvent>(Action onEventNoArgs, int priority = 0) where TEvent : IEvent
         {
             if (onEventNoArgs == null)
                 throw new ArgumentNullException(nameof(onEventNoArgs));
                 
-            return GetContainer<TEvent>().Register(onEventNoArgs);
+            return GetContainer<TEvent>().Register(onEventNoArgs, priority);
         }
         
         public void Deregister<TEvent>(EventBinding<TEvent> binding) where TEvent : IEvent

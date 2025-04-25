@@ -19,6 +19,8 @@ namespace DGP.EventBus
         private T _lastRaisedValue = default(T);
         public T LastRaisedValue => _lastRaisedValue;
         
+        private bool _needsSorting = false;
+        
         #region Registration
         /// <summary>
         /// Registers an EventBinding to the EventBus
@@ -31,6 +33,7 @@ namespace DGP.EventBus
                 throw new ArgumentNullException(nameof(binding));
             
             _bindings.Add(binding);
+            _needsSorting = true;
             
             if (repeastLastRaisedValue)
                 binding.Invoke(_lastRaisedValue);
@@ -44,7 +47,7 @@ namespace DGP.EventBus
         /// <param name="onEvent">The Action<T> to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
-        public EventBinding<T> Register(Action<T> onEvent, bool repeastLastRaisedValue = false) {
+        public EventBinding<T> Register(Action<T> onEvent, int priority = 0, bool repeastLastRaisedValue = false) {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
             
@@ -52,8 +55,9 @@ namespace DGP.EventBus
             if (_registeredHandlers.TryGetValue(onEvent, out var existingBinding))
                 return existingBinding;
                 
-            var handler = new EventBinding<T>(onEvent);
+            var handler = new EventBinding<T>(onEvent, priority);
             _registeredHandlers.Add(onEvent, handler);
+            _needsSorting = true;
             
             return Register(handler, repeastLastRaisedValue);
         }
@@ -64,7 +68,7 @@ namespace DGP.EventBus
         /// <param name="onEventNoArgs">The Action to invoke when the event occurs</param>
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
-        public EventBinding<T> Register(Action onEventNoArgs) {
+        public EventBinding<T> Register(Action onEventNoArgs, int priority = 0) {
             if (onEventNoArgs == null)
                 throw new ArgumentNullException(nameof(onEventNoArgs));
             
@@ -72,8 +76,9 @@ namespace DGP.EventBus
             if (_registeredNoArgHandlers.TryGetValue(onEventNoArgs, out var existingBinding))
                 return existingBinding;
                 
-            var handler = new EventBinding<T>(onEventNoArgs);
+            var handler = new EventBinding<T>(onEventNoArgs, priority);
             _registeredNoArgHandlers.Add(onEventNoArgs, handler);
+            _needsSorting = true;
             
             return Register(handler);
         }
@@ -148,10 +153,21 @@ namespace DGP.EventBus
         {
             _lastRaisedValue = @event;
             _isCurrentlyRaising = true;
+            
+            if (_needsSorting)
+                SortBindings();
+            
             InvokeBindings(@event);
+            
             _isCurrentlyRaising = false;
             
             ProcessPendingRemovals();
+        }
+        
+        private void SortBindings()
+        {
+            _bindings.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+            _needsSorting = false;
         }
 
         private void InvokeBindings(T @event) {

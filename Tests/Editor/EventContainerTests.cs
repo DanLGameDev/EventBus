@@ -278,7 +278,7 @@ namespace DGP.EventBus.Editor.Tests
             // Register handler with repeatLastRaisedValue = true
             int invokeCount = 0;
             int lastValue = 0;
-            _eventContainer.Register<TestEvent>(e => { invokeCount++; lastValue = e.TestValue; }, true);
+            _eventContainer.Register<TestEvent>(e => { invokeCount++; lastValue = e.TestValue; }, repeatLastRaisedValue:true);
             
             // Handler should be called immediately with last raised value
             Assert.AreEqual(1, invokeCount);
