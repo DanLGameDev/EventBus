@@ -7,6 +7,10 @@ namespace DGP.EventBus
     {
         private readonly List<EventBinding<T>> _bindings = new();
         private readonly List<EventBinding<T>> _bindingsPendingRemoval = new();
+
+        // Track when handlers are registered to avoid duplicate registrations
+        private readonly Dictionary<Action<T>, EventBinding<T>> _registeredHandlers = new();
+        private readonly Dictionary<Action, EventBinding<T>> _registeredNoArgHandlers = new();
         
         internal List<EventBinding<T>> Bindings => _bindings;
         
@@ -44,7 +48,14 @@ namespace DGP.EventBus
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
             
-            return Register(new EventBinding<T>(onEvent), repeastLastRaisedValue);
+            // Check if we've already registered this handler
+            if (_registeredHandlers.TryGetValue(onEvent, out var existingBinding))
+                return existingBinding;
+                
+            var handler = new EventBinding<T>(onEvent);
+            _registeredHandlers.Add(onEvent, handler);
+            
+            return Register(handler, repeastLastRaisedValue);
         }
 
         /// <summary>
@@ -57,7 +68,14 @@ namespace DGP.EventBus
             if (onEventNoArgs == null)
                 throw new ArgumentNullException(nameof(onEventNoArgs));
             
-            return Register(new EventBinding<T>(onEventNoArgs));
+            // Check if we've already registered this handler
+            if (_registeredNoArgHandlers.TryGetValue(onEventNoArgs, out var existingBinding))
+                return existingBinding;
+                
+            var handler = new EventBinding<T>(onEventNoArgs);
+            _registeredNoArgHandlers.Add(onEventNoArgs, handler);
+            
+            return Register(handler);
         }
 
         /// <summary>
@@ -78,6 +96,36 @@ namespace DGP.EventBus
             
             _bindings.Remove(binding);
         }
+        
+        /// <summary>
+        /// De-registers an action from the EventBus
+        /// </summary>
+        /// <param name="onEvent">The action to deregister</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
+        public void Deregister(Action<T> onEvent) {
+            if (onEvent == null)
+                throw new ArgumentNullException(nameof(onEvent));
+            
+            if (_registeredHandlers.TryGetValue(onEvent, out var binding)) {
+                Deregister(binding);
+                _registeredHandlers.Remove(onEvent);
+            }
+        }
+        
+        /// <summary>
+        /// De-registers an action with no arguments from the EventBus
+        /// </summary>
+        /// <param name="onEventNoArgs">The action to deregister</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
+        public void Deregister(Action onEventNoArgs) {
+            if (onEventNoArgs == null)
+                throw new ArgumentNullException(nameof(onEventNoArgs));
+            
+            if (_registeredNoArgHandlers.TryGetValue(onEventNoArgs, out var binding)) {
+                Deregister(binding);
+                _registeredNoArgHandlers.Remove(onEventNoArgs);
+            }
+        }
         #endregion
         
         /// <summary>
@@ -86,6 +134,8 @@ namespace DGP.EventBus
         public void ClearAllBindings() {
             _bindings.Clear();
             _bindingsPendingRemoval.Clear();
+            _registeredHandlers.Clear();
+            _registeredNoArgHandlers.Clear();
             
             _lastRaisedValue = default(T);
         }
@@ -96,6 +146,7 @@ namespace DGP.EventBus
         /// <param name="event">The event to invoke</param>
         public void Raise(T @event = default)
         {
+            _lastRaisedValue = @event;
             _isCurrentlyRaising = true;
             InvokeBindings(@event);
             _isCurrentlyRaising = false;

@@ -9,11 +9,7 @@ namespace DGP.EventBus
     /// <typeparam name="T">The type of event to be handled, must implement IEvent.</typeparam>
     public static class EventBus<T> where T : IEvent
     {
-        private static EventBindingContainer<T> _eventBindingContainer = new();
-        
-        private static Dictionary<Action<T>, EventBinding<T>> _registeredHandlers = new();
-        private static Dictionary<Action, EventBinding<T>> _registeredNoArgHandlers = new();
-        
+        internal static EventBindingContainer<T> _eventBindingContainer = new();
         internal static List<EventBinding<T>> Bindings => _eventBindingContainer.Bindings;
       
         static EventBus() {
@@ -39,13 +35,7 @@ namespace DGP.EventBus
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
         public static EventBinding<T> Register(Action<T> onEvent) {
-            if (onEvent == null)
-                throw new ArgumentNullException(nameof(onEvent));
-
-            var handler = new EventBinding<T>(onEvent);
-            _registeredHandlers.Add(onEvent, handler);
-            
-            return Register(handler);
+            return _eventBindingContainer.Register(onEvent);
         }
 
         /// <summary>
@@ -55,13 +45,7 @@ namespace DGP.EventBus
         /// <returns>The event binding created by this method</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
         public static EventBinding<T> Register(Action onEventNoArgs) {
-            if (onEventNoArgs == null)
-                throw new ArgumentNullException(nameof(onEventNoArgs));
-            
-            var handler = new EventBinding<T>(onEventNoArgs);
-            _registeredNoArgHandlers.Add(onEventNoArgs, handler);
-            
-            return Register(handler);
+            return _eventBindingContainer.Register(onEventNoArgs);
         }
 
         /// <summary>
@@ -73,24 +57,22 @@ namespace DGP.EventBus
             _eventBindingContainer.Deregister(binding);
         }
         
+        /// <summary>
+        /// De-registers an action handler from the EventBus
+        /// </summary>
+        /// <param name="onEvent">The action to deregister</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEvent"/> is null.</exception>
         public static void Deregister(Action<T> onEvent) {
-            if (onEvent == null)
-                throw new ArgumentNullException(nameof(onEvent));
-            
-            if (_registeredHandlers.TryGetValue(onEvent, out var binding)) {
-                Deregister(binding);
-                _registeredHandlers.Remove(onEvent);
-            }
+            _eventBindingContainer.Deregister(onEvent);
         }
         
+        /// <summary>
+        /// De-registers an action with no arguments from the EventBus
+        /// </summary>
+        /// <param name="onEventNoArgs">The action to deregister</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="onEventNoArgs"/> is null.</exception>
         public static void Deregister(Action onEventNoArgs) {
-            if (onEventNoArgs == null)
-                throw new ArgumentNullException(nameof(onEventNoArgs));
-            
-            if (_registeredNoArgHandlers.TryGetValue(onEventNoArgs, out var binding)) {
-                Deregister(binding);
-                _registeredNoArgHandlers.Remove(onEventNoArgs);
-            }
+            _eventBindingContainer.Deregister(onEventNoArgs);
         }
         
         /// <summary>
@@ -112,6 +94,15 @@ namespace DGP.EventBus
             #endif
             
             _eventBindingContainer.Raise(@event);
+        }
+        
+        /// <summary>
+        /// Gets the last value raised on this event bus.
+        /// </summary>
+        /// <returns>The last raised value, or default if none.</returns>
+        public static T GetLastRaisedValue()
+        {
+            return _eventBindingContainer.LastRaisedValue;
         }
     }
 }
