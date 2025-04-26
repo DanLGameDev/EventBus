@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+#if UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+#endif
 
 namespace DGP.EventBus
 {
@@ -34,7 +37,6 @@ namespace DGP.EventBus
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
         
-            // Use the container's register method directly instead of creating a new binding first
             return GetContainer<TEvent>().Register(onEvent, priority, repeatLastRaisedValue);
         }
 
@@ -95,8 +97,7 @@ namespace DGP.EventBus
             return GetContainer<TEvent>().LastRaisedValue;
         }
         
-        
-        // Added async registration methods
+        // Task-based async methods
         public EventBinding<TEvent> Register<TEvent>(Func<TEvent, Task> onEventAsync, int priority = 0, bool repeatLastRaisedValue = false) where TEvent : IEvent
         {
             if (onEventAsync == null)
@@ -129,10 +130,49 @@ namespace DGP.EventBus
             GetContainer<TEvent>().Deregister(onEventNoArgsAsync);
         }
         
-        // Added async raise method
         public async Task RaiseAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
         {
             await GetContainer<TEvent>().RaiseAsync(@event);
         }
+
+        #if UNITASK_SUPPORT
+        // UniTask-based async methods
+        public EventBinding<TEvent> Register<TEvent>(Func<TEvent, UniTask> onEventUniAsync, int priority = 0, bool repeatLastRaisedValue = false) where TEvent : IEvent
+        {
+            if (onEventUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventUniAsync));
+                
+            return GetContainer<TEvent>().Register(onEventUniAsync, priority, repeatLastRaisedValue);
+        }
+        
+        public EventBinding<TEvent> Register<TEvent>(Func<UniTask> onEventNoArgsUniAsync, int priority = 0) where TEvent : IEvent
+        {
+            if (onEventNoArgsUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
+                
+            return GetContainer<TEvent>().Register(onEventNoArgsUniAsync, priority);
+        }
+        
+        public void Deregister<TEvent>(Func<TEvent, UniTask> onEventUniAsync) where TEvent : IEvent
+        {
+            if (onEventUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventUniAsync));
+                
+            GetContainer<TEvent>().Deregister(onEventUniAsync);
+        }
+        
+        public void Deregister<TEvent>(Func<UniTask> onEventNoArgsUniAsync) where TEvent : IEvent
+        {
+            if (onEventNoArgsUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
+                
+            GetContainer<TEvent>().Deregister(onEventNoArgsUniAsync);
+        }
+        
+        public async UniTask RaiseUniAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
+        {
+            await GetContainer<TEvent>().RaiseUniAsync(@event);
+        }
+        #endif
     }
 }

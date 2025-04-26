@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+#if UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+#endif
 
 namespace DGP.EventBus
 {
@@ -37,6 +40,15 @@ namespace DGP.EventBus
             return _eventBindingContainer.Register(onEventAsync, priority);
         }
 
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// Registers a UniTask async function of a given event type to the EventBus and returns the binding
+        /// </summary>
+        public static EventBinding<T> Register(Func<T, UniTask> onEventUniAsync, int priority = 0) {
+            return _eventBindingContainer.Register(onEventUniAsync, priority);
+        }
+        #endif
+
         /// <summary>
         /// Registers an action with no arguments to the EventBus and returns the binding
         /// </summary>
@@ -50,6 +62,15 @@ namespace DGP.EventBus
         public static EventBinding<T> Register(Func<Task> onEventNoArgsAsync, int priority = 0) {
             return _eventBindingContainer.Register(onEventNoArgsAsync, priority);
         }
+
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// Registers a UniTask async function with no arguments to the EventBus and returns the binding
+        /// </summary>
+        public static EventBinding<T> Register(Func<UniTask> onEventNoArgsUniAsync, int priority = 0) {
+            return _eventBindingContainer.Register(onEventNoArgsUniAsync, priority);
+        }
+        #endif
 
         /// <summary>
         /// De-registers an event binding from the EventBus
@@ -71,6 +92,15 @@ namespace DGP.EventBus
         public static void Deregister(Func<T, Task> onEventAsync) {
             _eventBindingContainer.Deregister(onEventAsync);
         }
+
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// De-registers a UniTask async function handler from the EventBus
+        /// </summary>
+        public static void Deregister(Func<T, UniTask> onEventUniAsync) {
+            _eventBindingContainer.Deregister(onEventUniAsync);
+        }
+        #endif
         
         /// <summary>
         /// De-registers an action with no arguments from the EventBus
@@ -85,6 +115,15 @@ namespace DGP.EventBus
         public static void Deregister(Func<Task> onEventNoArgsAsync) {
             _eventBindingContainer.Deregister(onEventNoArgsAsync);
         }
+
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// De-registers a UniTask async function with no arguments from the EventBus
+        /// </summary>
+        public static void Deregister(Func<UniTask> onEventNoArgsUniAsync) {
+            _eventBindingContainer.Deregister(onEventNoArgsUniAsync);
+        }
+        #endif
         
         /// <summary>
         /// Clears all event bindings from the EventBus
@@ -117,6 +156,20 @@ namespace DGP.EventBus
             
             await _eventBindingContainer.RaiseAsync(@event);
         }
+
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// Raises the event, invoking all registered event bindings asynchronously with UniTask
+        /// </summary>
+        public static async UniTask RaiseUniAsync(T @event = default)
+        {
+            #if UNITY_EDITOR
+            EventBusRegistry.RecordInvocation<T>();
+            #endif
+            
+            await _eventBindingContainer.RaiseUniAsync(@event);
+        }
+        #endif
         
         /// <summary>
         /// Gets the last value raised on this event bus.
