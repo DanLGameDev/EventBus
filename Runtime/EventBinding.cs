@@ -16,10 +16,12 @@ namespace DGP.EventBus
 
         protected EventBinding(Action eventNoArgs, int priority = 0) : this(priority)
         {
-            if (eventNoArgs != null)
-            {
+            if (eventNoArgs != null) {
                 OnEventNoArgs = eventNoArgs;
-                OnEventNoArgsAsync = () => { eventNoArgs(); return UniTask.CompletedTask; };
+                OnEventNoArgsAsync = () => {
+                    eventNoArgs();
+                    return UniTask.CompletedTask;
+                };
             }
         }
 
@@ -49,21 +51,16 @@ namespace DGP.EventBus
                 };
         }
 
-        public EventBinding(Func<TEventType, UniTask> eventUniAsync, int priority = 0)
-            : base(priority)
+        public EventBinding(Func<TEventType, UniTask> eventUniAsync, int priority = 0) : base(priority)
         {
             if (eventUniAsync != null)
                 OnEvent = eventUniAsync;
         }
 
-        public EventBinding(Action eventNoArgs, int priority = 0)
-            : base(eventNoArgs, priority) { }
+        public EventBinding(Action eventNoArgs, int priority = 0) : base(eventNoArgs, priority) { }
+        public EventBinding(Func<UniTask> eventNoArgsUniAsync, int priority = 0) : base(eventNoArgsUniAsync, priority) { }
 
-        public EventBinding(Func<UniTask> eventNoArgsUniAsync, int priority = 0)
-            : base(eventNoArgsUniAsync, priority) { }
-
-        public EventBinding(Action<TEventType> @event, Action eventNoArgs, int priority = 0)
-            : base(eventNoArgs, priority)
+        public EventBinding(Action<TEventType> @event, Action eventNoArgs, int priority = 0) : base(eventNoArgs, priority)
         {
             if (@event != null)
                 OnEvent = evt => {
@@ -72,8 +69,7 @@ namespace DGP.EventBus
                 };
         }
 
-        public EventBinding(Func<TEventType, UniTask> eventUniAsync, Func<UniTask> eventNoArgsUniAsync, int priority = 0)
-            : base(eventNoArgsUniAsync, priority)
+        public EventBinding(Func<TEventType, UniTask> eventUniAsync, Func<UniTask> eventNoArgsUniAsync, int priority = 0) : base(eventNoArgsUniAsync, priority)
         {
             if (eventUniAsync != null)
                 OnEvent = eventUniAsync;
