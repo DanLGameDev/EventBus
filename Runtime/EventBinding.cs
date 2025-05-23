@@ -31,6 +31,10 @@ namespace DGP.EventBus
                 OnEventNoArgsAsync = eventNoArgsUniAsync;
         }
 
+        /// <summary>
+        /// Invokes the event asynchronously.
+        /// </summary>
+        /// <returns>A UniTask that completes when the event handling is finished.</returns>
         public async UniTask InvokeAsync()
         {
             await OnEventNoArgsAsync();
@@ -75,6 +79,11 @@ namespace DGP.EventBus
                 OnEvent = eventUniAsync;
         }
 
+        /// <summary>
+        /// Invokes the event asynchronously with the specified event data.
+        /// </summary>
+        /// <param name="event">The event data to pass to the event handler.</param>
+        /// <returns>A UniTask that completes when the event handling is finished.</returns>
         public async UniTask InvokeAsync(TEventType @event)
         {
             await base.InvokeAsync();
