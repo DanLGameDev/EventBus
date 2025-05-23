@@ -1,3 +1,10 @@
+## [1.8.0] - 2025-05-23
+### Changes
+- UniTask now a required dependency
+- Removed support for native Task based aync
+- Raising events now uses UniTask
+- RaiseConcurrent now raises all handlers in parallel
+
 ## [1.3.2] - 2024-10-18
 ### Changes
 - EventBindingContainers can now be created to act as local eventbuses

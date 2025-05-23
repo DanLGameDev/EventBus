@@ -1,10 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+#if UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+#endif
 
 namespace DGP.EventBus.Editor.Tests.PlayMode
 {
@@ -28,6 +30,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             EventBus<NestedEvent>.ClearAllBindings();
         }
 
+#if UNITASK_SUPPORT
         [UnityTest]
         public IEnumerator TestAsyncPriorityOrder()
         {
@@ -35,23 +38,24 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             var executionOrder = new List<string>();
             
             // Register handlers with different priorities
-            EventBus<TestEvent>.Register((Func<TestEvent, Task>)(async _ => {
-                await Task.Delay(10);
+            EventBus<TestEvent>.Register((Func<TestEvent, UniTask>)(async _ => {
+                await UniTask.Delay(10);
                 executionOrder.Add("Low");
             }), 0);
             
-            EventBus<TestEvent>.Register((Func<TestEvent, Task>)(async _ => {
-                await Task.Delay(20);
+            EventBus<TestEvent>.Register((Func<TestEvent, UniTask>)(async _ => {
+                await UniTask.Delay(20);
                 executionOrder.Add("Medium");
             }), 5);
             
-            EventBus<TestEvent>.Register((Func<TestEvent, Task>)(async _ => {
-                await Task.Delay(30);
+            EventBus<TestEvent>.Register((Func<TestEvent, UniTask>)(async _ => {
+                await UniTask.Delay(30);
                 executionOrder.Add("High");
             }), 10);
             
             // Raise the event
-            Task task = EventBus<TestEvent>.RaiseAsync(new TestEvent());
+            UniTask uniTask = EventBus<TestEvent>.RaiseAsync(new TestEvent());
+            var task = uniTask.AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
             
@@ -70,20 +74,21 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             var results = new List<string>();
             
             // First handler raises another event
-            container.Register<TestEvent>((Func<TestEvent, Task>)(async evt => {
+            container.Register<TestEvent>((Func<TestEvent, UniTask>)(async evt => {
                 results.Add($"TestEvent:{evt.TestValue}");
                 await container.RaiseAsync(new NestedEvent { NestedValue = evt.TestValue * 2 });
                 results.Add("TestEvent:After");
             }));
             
             // Handler for the nested event
-            container.Register<NestedEvent>((Func<NestedEvent, Task>)(async evt => {
-                await Task.Delay(100);
+            container.Register<NestedEvent>((Func<NestedEvent, UniTask>)(async evt => {
+                await UniTask.Delay(100);
                 results.Add($"NestedEvent:{evt.NestedValue}");
             }));
             
             // Raise the first event
-            Task task = container.RaiseAsync(new TestEvent { TestValue = 42 });
+            UniTask uniTask = container.RaiseAsync(new TestEvent { TestValue = 42 });
+            var task = uniTask.AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
             
@@ -101,19 +106,20 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             bool handlerAfterExceptionCalled = false;
             
             // Register a handler that will throw
-            EventBus<TestEvent>.Register((Func<TestEvent, Task>)(async _ => {
-                await Task.Delay(10);
+            EventBus<TestEvent>.Register((Func<TestEvent, UniTask>)(async _ => {
+                await UniTask.Delay(10);
                 throw new InvalidOperationException("Test exception");
             }));
             
             // Register another handler after the one that throws
-            EventBus<TestEvent>.Register((Func<TestEvent, Task>)(async _ => {
-                await Task.Delay(10);
+            EventBus<TestEvent>.Register((Func<TestEvent, UniTask>)(async _ => {
+                await UniTask.Delay(10);
                 handlerAfterExceptionCalled = true;
             }));
             
             // Raise the event and catch the exception
-            Task task = EventBus<TestEvent>.RaiseAsync(new TestEvent());
+            UniTask uniTask = EventBus<TestEvent>.RaiseAsync(new TestEvent());
+            var task = uniTask.AsTask();
             
             yield return new WaitUntil(() => task.IsCompleted);
             
@@ -142,14 +148,14 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             int processedCount = 0;
             
             // Register a handler that does minimal work
-            container.Register<TestEvent>((Func<TestEvent, Task>)(async _ => {
-                await Task.Delay(1); // Minimal delay
+            container.Register<TestEvent>((Func<TestEvent, UniTask>)(async _ => {
+                await UniTask.Delay(1); // Minimal delay
                 processedCount++;
             }));
             
             // Process multiple events
             const int eventCount = 10;
-            var tasks = new List<Task>();
+            var tasks = new List<UniTask>();
             
             for (int i = 0; i < eventCount; i++)
             {
@@ -157,14 +163,16 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             }
             
             // Wait for all tasks to complete
-            Task allTasks = Task.WhenAll(tasks);
-            yield return new WaitUntil(() => allTasks.IsCompleted);
+            UniTask allTasks = UniTask.WhenAll(tasks);
+            var task = allTasks.AsTask();
+            yield return new WaitUntil(() => task.IsCompleted);
             
-            if (allTasks.IsFaulted)
-                throw allTasks.Exception;
+            if (task.IsFaulted)
+                throw task.Exception;
             
             // Verify all events were processed
             Assert.AreEqual(eventCount, processedCount);
         }
+#endif
     }
 }

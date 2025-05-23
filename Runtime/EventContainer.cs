@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-#if UNITASK_SUPPORT
 using Cysharp.Threading.Tasks;
-#endif
 
 namespace DGP.EventBus
 {
@@ -24,20 +21,28 @@ namespace DGP.EventBus
         }
         
         #region Registration
-        public EventBinding<TEvent> Register<TEvent>(EventBinding<TEvent> binding, bool repeatLastRaisedValue = false) where TEvent : IEvent
+        public EventBinding<TEvent> Register<TEvent>(EventBinding<TEvent> binding) where TEvent : IEvent
         {
             if (binding == null)
                 throw new ArgumentNullException(nameof(binding));
                 
-            return GetContainer<TEvent>().Register(binding, repeatLastRaisedValue);
+            return GetContainer<TEvent>().Register(binding);
         }
 
-        public EventBinding<TEvent> Register<TEvent>(Action<TEvent> onEvent, int priority = 0, bool repeatLastRaisedValue = false) where TEvent : IEvent
+        public EventBinding<TEvent> Register<TEvent>(Action<TEvent> onEvent, int priority = 0) where TEvent : IEvent
         {
             if (onEvent == null)
                 throw new ArgumentNullException(nameof(onEvent));
         
-            return GetContainer<TEvent>().Register(onEvent, priority, repeatLastRaisedValue);
+            return GetContainer<TEvent>().Register(onEvent, priority);
+        }
+
+        public EventBinding<TEvent> Register<TEvent>(Func<TEvent, UniTask> onEventUniAsync, int priority = 0) where TEvent : IEvent
+        {
+            if (onEventUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventUniAsync));
+                
+            return GetContainer<TEvent>().Register(onEventUniAsync, priority);
         }
 
         public EventBinding<TEvent> Register<TEvent>(Action onEventNoArgs, int priority = 0) where TEvent : IEvent
@@ -46,6 +51,14 @@ namespace DGP.EventBus
                 throw new ArgumentNullException(nameof(onEventNoArgs));
                 
             return GetContainer<TEvent>().Register(onEventNoArgs, priority);
+        }
+
+        public EventBinding<TEvent> Register<TEvent>(Func<UniTask> onEventNoArgsUniAsync, int priority = 0) where TEvent : IEvent
+        {
+            if (onEventNoArgsUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
+                
+            return GetContainer<TEvent>().Register(onEventNoArgsUniAsync, priority);
         }
         
         public void Deregister<TEvent>(EventBinding<TEvent> binding) where TEvent : IEvent
@@ -63,6 +76,14 @@ namespace DGP.EventBus
             
             GetContainer<TEvent>().Deregister(onEvent);
         }
+
+        public void Deregister<TEvent>(Func<TEvent, UniTask> onEventUniAsync) where TEvent : IEvent
+        {
+            if (onEventUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventUniAsync));
+                
+            GetContainer<TEvent>().Deregister(onEventUniAsync);
+        }
     
         public void Deregister<TEvent>(Action onEventNoArgs) where TEvent : IEvent
         {
@@ -70,6 +91,14 @@ namespace DGP.EventBus
                 throw new ArgumentNullException(nameof(onEventNoArgs));
             
             GetContainer<TEvent>().Deregister(onEventNoArgs);
+        }
+
+        public void Deregister<TEvent>(Func<UniTask> onEventNoArgsUniAsync) where TEvent : IEvent
+        {
+            if (onEventNoArgsUniAsync == null)
+                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
+                
+            GetContainer<TEvent>().Deregister(onEventNoArgsUniAsync);
         }
         
         public void ClearBindings<TEvent>() where TEvent : IEvent
@@ -87,92 +116,24 @@ namespace DGP.EventBus
         }
         #endregion
         
-        public void Raise<TEvent>(TEvent @event = default) where TEvent : IEvent
+        public async UniTask RaiseAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
         {
-            GetContainer<TEvent>().Raise(@event);
+            await GetContainer<TEvent>().RaiseAsync(@event);
+        }
+
+        public async UniTask RaiseSequentialAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
+        {
+            await GetContainer<TEvent>().RaiseSequentialAsync(@event);
+        }
+
+        public async UniTask RaiseConcurrentAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
+        {
+            await GetContainer<TEvent>().RaiseConcurrentAsync(@event);
         }
         
         public TEvent GetLastRaisedValue<TEvent>() where TEvent : IEvent
         {
             return GetContainer<TEvent>().LastRaisedValue;
         }
-        
-        // Task-based async methods
-        public EventBinding<TEvent> Register<TEvent>(Func<TEvent, Task> onEventAsync, int priority = 0, bool repeatLastRaisedValue = false) where TEvent : IEvent
-        {
-            if (onEventAsync == null)
-                throw new ArgumentNullException(nameof(onEventAsync));
-                
-            return GetContainer<TEvent>().Register(onEventAsync, priority, repeatLastRaisedValue);
-        }
-        
-        public EventBinding<TEvent> Register<TEvent>(Func<Task> onEventNoArgsAsync, int priority = 0) where TEvent : IEvent
-        {
-            if (onEventNoArgsAsync == null)
-                throw new ArgumentNullException(nameof(onEventNoArgsAsync));
-                
-            return GetContainer<TEvent>().Register(onEventNoArgsAsync, priority);
-        }
-        
-        public void Deregister<TEvent>(Func<TEvent, Task> onEventAsync) where TEvent : IEvent
-        {
-            if (onEventAsync == null)
-                throw new ArgumentNullException(nameof(onEventAsync));
-                
-            GetContainer<TEvent>().Deregister(onEventAsync);
-        }
-        
-        public void Deregister<TEvent>(Func<Task> onEventNoArgsAsync) where TEvent : IEvent
-        {
-            if (onEventNoArgsAsync == null)
-                throw new ArgumentNullException(nameof(onEventNoArgsAsync));
-                
-            GetContainer<TEvent>().Deregister(onEventNoArgsAsync);
-        }
-        
-        public async Task RaiseAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
-        {
-            await GetContainer<TEvent>().RaiseAsync(@event);
-        }
-
-        #if UNITASK_SUPPORT
-        // UniTask-based async methods
-        public EventBinding<TEvent> Register<TEvent>(Func<TEvent, UniTask> onEventUniAsync, int priority = 0, bool repeatLastRaisedValue = false) where TEvent : IEvent
-        {
-            if (onEventUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventUniAsync));
-                
-            return GetContainer<TEvent>().Register(onEventUniAsync, priority, repeatLastRaisedValue);
-        }
-        
-        public EventBinding<TEvent> Register<TEvent>(Func<UniTask> onEventNoArgsUniAsync, int priority = 0) where TEvent : IEvent
-        {
-            if (onEventNoArgsUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
-                
-            return GetContainer<TEvent>().Register(onEventNoArgsUniAsync, priority);
-        }
-        
-        public void Deregister<TEvent>(Func<TEvent, UniTask> onEventUniAsync) where TEvent : IEvent
-        {
-            if (onEventUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventUniAsync));
-                
-            GetContainer<TEvent>().Deregister(onEventUniAsync);
-        }
-        
-        public void Deregister<TEvent>(Func<UniTask> onEventNoArgsUniAsync) where TEvent : IEvent
-        {
-            if (onEventNoArgsUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
-                
-            GetContainer<TEvent>().Deregister(onEventNoArgsUniAsync);
-        }
-        
-        public async UniTask RaiseUniAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
-        {
-            await GetContainer<TEvent>().RaiseUniAsync(@event);
-        }
-        #endif
     }
 }

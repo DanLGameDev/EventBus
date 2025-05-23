@@ -1,5 +1,9 @@
 using System;
+using System.Collections;
 using NUnit.Framework;
+using UnityEngine.TestTools;
+using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace DGP.EventBus.Editor.Tests
 {
@@ -13,7 +17,6 @@ namespace DGP.EventBus.Editor.Tests
         [SetUp]
         public void Setup()
         {
-            // Clear all bindings before each test to ensure test isolation
             EventBus<TestEvent>.ClearAllBindings();
         }
 
@@ -57,131 +60,180 @@ namespace DGP.EventBus.Editor.Tests
             private void OnTestEvent() => InvokeCount++;
         }
         
-        [Test]
-        public void TestArgEvent() {
+        [UnityTest]
+        public IEnumerator TestArgEvent() {
             var handler = new MockHandler();
-            EventBus<TestEvent>.Raise(new TestEvent {TestValue = 42});
+            var task = EventBus<TestEvent>.RaiseAsync(new TestEvent {TestValue = 42}).AsTask();
+            yield return new WaitUntil(() => task.IsCompleted);
+            if (task.IsFaulted) throw task.Exception;
+            
             Assert.AreEqual(1, handler.InvokeCount);
             Assert.AreEqual(42, handler.LastTestValue);
         }
         
-        [Test]
-        public void TestNoArgEvent() {
+        [UnityTest]
+        public IEnumerator TestNoArgEvent() {
             var handler = new MockHandlerEmptyArgs();
-            EventBus<TestEvent>.Raise(new TestEvent {TestValue = 42});
+            var task = EventBus<TestEvent>.RaiseAsync(new TestEvent {TestValue = 42}).AsTask();
+            yield return new WaitUntil(() => task.IsCompleted);
+            if (task.IsFaulted) throw task.Exception;
+            
             Assert.AreEqual(1, handler.InvokeCount);
         }
         
-        [Test]
-        public void TestDeregisterArgHandler()
+        [UnityTest]
+        public IEnumerator TestDeregisterArgHandler()
         {
             var handler = new MockHandler();
             
-            // First event should be received
-            EventBus<TestEvent>.Raise(new TestEvent {TestValue = 42});
+            var task1 = EventBus<TestEvent>.RaiseAsync(new TestEvent {TestValue = 42}).AsTask();
+            yield return new WaitUntil(() => task1.IsCompleted);
+            if (task1.IsFaulted) throw task1.Exception;
             Assert.AreEqual(1, handler.InvokeCount);
             
-            // Deregister the handler
             handler.Deregister();
             
-            // This event should not be received
-            EventBus<TestEvent>.Raise(new TestEvent {TestValue = 100});
+            var task2 = EventBus<TestEvent>.RaiseAsync(new TestEvent {TestValue = 100}).AsTask();
+            yield return new WaitUntil(() => task2.IsCompleted);
+            if (task2.IsFaulted) throw task2.Exception;
             Assert.AreEqual(1, handler.InvokeCount, "Handler should not receive events after deregistration");
             Assert.AreEqual(42, handler.LastTestValue, "LastTestValue should not change after deregistration");
         }
         
-        [Test]
-        public void TestDeregisterNoArgHandler()
+        [UnityTest]
+        public IEnumerator TestDeregisterNoArgHandler()
         {
             var handler = new MockHandlerEmptyArgs();
             
-            // First event should be received
-            EventBus<TestEvent>.Raise(new TestEvent());
+            var task1 = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task1.IsCompleted);
+            if (task1.IsFaulted) throw task1.Exception;
             Assert.AreEqual(1, handler.InvokeCount);
             
-            // Deregister the handler
             handler.Deregister();
             
-            // This event should not be received
-            EventBus<TestEvent>.Raise(new TestEvent());
+            var task2 = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task2.IsCompleted);
+            if (task2.IsFaulted) throw task2.Exception;
             Assert.AreEqual(1, handler.InvokeCount, "Handler should not receive events after deregistration");
         }
         
-        [Test]
-        public void TestClearAllBindings()
+        [UnityTest]
+        public IEnumerator TestClearAllBindings()
         {
             var handler1 = new MockHandler();
             var handler2 = new MockHandlerEmptyArgs();
             
-            // First event should be received by both handlers
-            EventBus<TestEvent>.Raise(new TestEvent {TestValue = 42});
+            var task1 = EventBus<TestEvent>.RaiseAsync(new TestEvent {TestValue = 42}).AsTask();
+            yield return new WaitUntil(() => task1.IsCompleted);
+            if (task1.IsFaulted) throw task1.Exception;
             Assert.AreEqual(1, handler1.InvokeCount);
             Assert.AreEqual(1, handler2.InvokeCount);
             
-            // Clear all bindings
             EventBus<TestEvent>.ClearAllBindings();
             
-            // This event should not be received by any handler
-            EventBus<TestEvent>.Raise(new TestEvent {TestValue = 100});
+            var task2 = EventBus<TestEvent>.RaiseAsync(new TestEvent {TestValue = 100}).AsTask();
+            yield return new WaitUntil(() => task2.IsCompleted);
+            if (task2.IsFaulted) throw task2.Exception;
             Assert.AreEqual(1, handler1.InvokeCount, "Handler1 should not receive events after clearing all bindings");
             Assert.AreEqual(1, handler2.InvokeCount, "Handler2 should not receive events after clearing all bindings");
         }
         
-        [Test]
-        public void TestMultipleRegistrationsAndDeregistrations()
+        [UnityTest]
+        public IEnumerator TestMultipleRegistrationsAndDeregistrations()
         {
             int handler1Count = 0;
             int handler2Count = 0;
             
-            // Define the handlers as instance fields to ensure the same reference is used for registration and deregistration
             Action<TestEvent> handler1 = _ => handler1Count++;
             Action handler2 = () => handler2Count++;
             
-            // Register both handlers
             EventBus<TestEvent>.Register(handler1);
             EventBus<TestEvent>.Register(handler2);
             
-            // First event should be received by both handlers
-            EventBus<TestEvent>.Raise(new TestEvent());
+            var task1 = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task1.IsCompleted);
+            if (task1.IsFaulted) throw task1.Exception;
             Assert.AreEqual(1, handler1Count);
             Assert.AreEqual(1, handler2Count);
             
-            // Deregister first handler
             EventBus<TestEvent>.Deregister(handler1);
             
-            // Second event should be received only by second handler
-            EventBus<TestEvent>.Raise(new TestEvent());
+            var task2 = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task2.IsCompleted);
+            if (task2.IsFaulted) throw task2.Exception;
             Assert.AreEqual(1, handler1Count, "Handler1 should not receive events after deregistration");
             Assert.AreEqual(2, handler2Count);
             
-            // Deregister second handler
             EventBus<TestEvent>.Deregister(handler2);
             
-            // Third event should not be received by any handler
-            EventBus<TestEvent>.Raise(new TestEvent());
+            var task3 = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task3.IsCompleted);
+            if (task3.IsFaulted) throw task3.Exception;
             Assert.AreEqual(1, handler1Count);
             Assert.AreEqual(2, handler2Count, "Handler2 should not receive events after deregistration");
         }
         
-        [Test]
-        public void TestDirectBindingRegistrationAndDeregistration()
+        [UnityTest]
+        public IEnumerator TestDirectBindingRegistrationAndDeregistration()
         {
             int eventCount = 0;
             var binding = new EventBinding<TestEvent>(_ => eventCount++);
             
-            // Register the binding directly
             EventBus<TestEvent>.Register(binding);
             
-            // First event should be received
-            EventBus<TestEvent>.Raise(new TestEvent());
+            var task1 = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task1.IsCompleted);
+            if (task1.IsFaulted) throw task1.Exception;
             Assert.AreEqual(1, eventCount);
             
-            // Deregister the binding
             EventBus<TestEvent>.Deregister(binding);
             
-            // This event should not be received
-            EventBus<TestEvent>.Raise(new TestEvent());
+            var task2 = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task2.IsCompleted);
+            if (task2.IsFaulted) throw task2.Exception;
             Assert.AreEqual(1, eventCount, "Handler should not receive events after deregistration");
+        }
+
+        [UnityTest]
+        public IEnumerator TestAsyncHandler()
+        {
+            int asyncCount = 0;
+            EventBus<TestEvent>.Register(async (TestEvent evt) => {
+                await UniTask.Delay(50);
+                asyncCount++;
+            });
+
+            var task = EventBus<TestEvent>.RaiseAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task.IsCompleted);
+            if (task.IsFaulted) throw task.Exception;
+            
+            Assert.AreEqual(1, asyncCount);
+        }
+
+        [UnityTest]
+        public IEnumerator TestConcurrentRaise()
+        {
+            var results = new System.Collections.Generic.List<int>();
+            
+            EventBus<TestEvent>.Register(async (TestEvent evt) => {
+                await UniTask.Delay(100);
+                results.Add(1);
+            });
+            
+            EventBus<TestEvent>.Register(async (TestEvent evt) => {
+                await UniTask.Delay(50);
+                results.Add(2);
+            });
+
+            var task = EventBus<TestEvent>.RaiseConcurrentAsync(new TestEvent()).AsTask();
+            yield return new WaitUntil(() => task.IsCompleted);
+            if (task.IsFaulted) throw task.Exception;
+            
+            Assert.AreEqual(2, results.Count);
+            // In concurrent mode, handler 2 (50ms delay) should complete before handler 1 (100ms delay)
+            Assert.AreEqual(2, results[0]);
+            Assert.AreEqual(1, results[1]);
         }
     }
 }
