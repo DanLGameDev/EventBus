@@ -94,6 +94,8 @@ namespace DGP.EventBus
         }
         #endregion
         
+        public static async UniTask Raise(T @event = default) => await RaiseAsync(@event);
+        
         /// <summary>
         /// Raises the event, invoking all registered event bindings sequentially
         /// </summary>
