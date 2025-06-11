@@ -94,10 +94,20 @@ namespace DGP.EventBus
         }
         #endregion
         
-        public static async UniTask Raise(T @event = default) => await RaiseAsync(@event);
-        
         /// <summary>
-        /// Raises the event, invoking all registered event bindings sequentially
+        /// Raises the event, invoking all registered event bindings sequentially, blocking the current thread until all bindings have been invoked
+        /// </summary>
+        public static void Raise(T @event = default)
+        {
+            #if UNITY_EDITOR
+            EventBusRegistry.RecordInvocation<T>();
+            #endif
+            
+            _eventBindingContainer.Raise(@event);
+        }
+
+        /// <summary>
+        /// Raises the event, invoking all registered event bindings sequentially and asynchronously
         /// </summary>
         public static async UniTask RaiseAsync(T @event = default)
         {

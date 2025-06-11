@@ -116,6 +116,11 @@ namespace DGP.EventBus
         }
         #endregion
         
+        public void Raise<TEvent>(TEvent @event = default) where TEvent : IEvent
+        {
+            GetContainer<TEvent>().Raise(@event);
+        }
+        
         public async UniTask RaiseAsync<TEvent>(TEvent @event = default) where TEvent : IEvent
         {
             await GetContainer<TEvent>().RaiseAsync(@event);

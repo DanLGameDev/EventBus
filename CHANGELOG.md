@@ -1,3 +1,7 @@
+## [1.8.5] - 2025-06-11
+### Changes
+- Raise method is now blocking
+
 ## [1.8.0] - 2025-05-23
 ### Changes
 - UniTask now a required dependency

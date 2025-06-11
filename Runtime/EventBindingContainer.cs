@@ -206,11 +206,27 @@ namespace DGP.EventBus
         }
 
         #endregion
+        
+        /// <summary>
+        /// Raises the event, invoking all registered event bindings sequentially. Blocking.
+        /// </summary>
+        public void Raise(T @event = default)
+        {
+            RaiseAsync(@event).GetAwaiter().GetResult();
+        }
 
         /// <summary>
         /// Raises the event, invoking all registered event bindings sequentially
         /// </summary>
         public async UniTask RaiseAsync(T @event = default)
+        {
+            await RaiseSequentialAsync(@event);
+        }
+
+        /// <summary>
+        /// Raises the event, invoking all registered event bindings sequentially (one after another)
+        /// </summary>
+        public async UniTask RaiseSequentialAsync(T @event = default)
         {
             _lastRaisedValue = @event;
             _isCurrentlyRaising = true;
@@ -223,14 +239,6 @@ namespace DGP.EventBus
             _isCurrentlyRaising = false;
 
             ProcessPendingRemovals();
-        }
-
-        /// <summary>
-        /// Raises the event, invoking all registered event bindings sequentially (one after another)
-        /// </summary>
-        public async UniTask RaiseSequentialAsync(T @event = default)
-        {
-            await RaiseAsync(@event);
         }
 
         /// <summary>
