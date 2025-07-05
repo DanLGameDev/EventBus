@@ -1,286 +1,343 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using DGP.EventBus.Bindings;
+#if UNITASK_SUPPORT
 using Cysharp.Threading.Tasks;
+#endif
 
 namespace DGP.EventBus
 {
     public class EventBindingContainer<T> where T : IEvent
     {
-        private readonly List<EventBinding<T>> _bindings = new();
-        private readonly List<EventBinding<T>> _bindingsPendingRemoval = new();
-
-        // Track when handlers are registered to avoid duplicate registrations
-        private readonly Dictionary<Action<T>, EventBinding<T>> _registeredHandlers = new();
-        private readonly Dictionary<Func<T, UniTask>, EventBinding<T>> _registeredUniAsyncHandlers = new();
-        private readonly Dictionary<Action, EventBinding<T>> _registeredNoArgHandlers = new();
-        private readonly Dictionary<Func<UniTask>, EventBinding<T>> _registeredNoArgUniAsyncHandlers = new();
-
-        internal List<EventBinding<T>> Bindings => _bindings;
+        private readonly List<IEventBinding> _bindings = new();
+        private readonly List<IEventBinding> _bindingsPendingRemoval = new();
 
         private bool _isCurrentlyRaising;
 
-        private T _lastRaisedValue = default(T);
-        public T LastRaisedValue => _lastRaisedValue;
-
-        private bool _needsSorting = false;
+        public IReadOnlyList<IEventBinding> Bindings => _bindings;
+        public int Count => _bindings.Count;
 
         #region Registration
 
         /// <summary>
-        /// Registers an EventBinding to the EventBus
+        /// Registers a typed action handler
         /// </summary>
-        public EventBinding<T> Register(EventBinding<T> binding)
+        public IEventBinding<T> Register(Action<T> handler, int priority = 0)
         {
-            if (binding == null)
-                throw new ArgumentNullException(nameof(binding));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
 
+            var existing = _bindings.OfType<TypedEventBinding<T>>()
+                                   .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (existing != null)
+                return existing;
+
+            var binding = new TypedEventBinding<T>(handler, priority);
             _bindings.Add(binding);
-            _needsSorting = true;
+            SortBindings();
 
             return binding;
         }
 
         /// <summary>
-        /// Registers an action of a given event type to the EventBus
+        /// Registers a no-args action handler
         /// </summary>
-        public EventBinding<T> Register(Action<T> onEvent, int priority = 0)
+        public IEventBindingNoArgs Register(Action handler, int priority = 0)
         {
-            if (onEvent == null)
-                throw new ArgumentNullException(nameof(onEvent));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
 
-            // Check if we've already registered this handler
-            if (_registeredHandlers.TryGetValue(onEvent, out var existingBinding))
-                return existingBinding;
+            var existing = _bindings.OfType<NoArgsEventBinding>()
+                                   .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (existing != null)
+                return existing;
 
-            var handler = new EventBinding<T>(onEvent, priority);
-            _registeredHandlers.Add(onEvent, handler);
-            _needsSorting = true;
+            var binding = new NoArgsEventBinding(handler, priority);
+            _bindings.Add(binding);
+            SortBindings();
 
-            return Register(handler);
+            return binding;
+        }
+
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// Registers a typed async handler
+        /// </summary>
+        public IEventBinding<T> Register(Func<T, UniTask> handler, int priority = 0)
+        {
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+
+            var existing = _bindings.OfType<TypedEventBinding<T>>()
+                                   .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (existing != null)
+                return existing;
+
+            var binding = new TypedEventBinding<T>(handler, priority);
+            _bindings.Add(binding);
+            SortBindings();
+
+            return binding;
         }
 
         /// <summary>
-        /// Registers a UniTask async function of a given event type to the EventBus
+        /// Registers a no-args async handler
         /// </summary>
-        public EventBinding<T> Register(Func<T, UniTask> onEventUniAsync, int priority = 0)
+        public IEventBindingNoArgs Register(Func<UniTask> handler, int priority = 0)
         {
-            if (onEventUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventUniAsync));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
 
-            // Check if we've already registered this handler
-            if (_registeredUniAsyncHandlers.TryGetValue(onEventUniAsync, out var existingBinding))
-                return existingBinding;
+            var existing = _bindings.OfType<NoArgsEventBinding>()
+                                   .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (existing != null)
+                return existing;
 
-            var handler = new EventBinding<T>(onEventUniAsync, priority);
-            _registeredUniAsyncHandlers.Add(onEventUniAsync, handler);
-            _needsSorting = true;
+            var binding = new NoArgsEventBinding(handler, priority);
+            _bindings.Add(binding);
+            SortBindings();
 
-            return Register(handler);
+            return binding;
+        }
+        #endif
+
+        /// <summary>
+        /// Registers a pre-created binding directly
+        /// </summary>
+        public TBinding Register<TBinding>(TBinding binding) where TBinding : IEventBinding
+        {
+            if (binding == null) throw new ArgumentNullException(nameof(binding));
+
+            _bindings.Add(binding);
+            SortBindings();
+
+            return binding;
+        }
+
+        #endregion
+
+        #region Deregistration
+
+        /// <summary>
+        /// Deregisters a typed action handler
+        /// </summary>
+        public void Deregister(Action<T> handler)
+        {
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+
+            var binding = _bindings.OfType<TypedEventBinding<T>>()
+                                  .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (binding != null)
+                DeregisterBinding(binding);
         }
 
         /// <summary>
-        /// Registers an action with no arguments to the EventBus
+        /// Deregisters a no-args action handler
         /// </summary>
-        public EventBinding<T> Register(Action onEventNoArgs, int priority = 0)
+        public void Deregister(Action handler)
         {
-            if (onEventNoArgs == null)
-                throw new ArgumentNullException(nameof(onEventNoArgs));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
 
-            // Check if we've already registered this handler
-            if (_registeredNoArgHandlers.TryGetValue(onEventNoArgs, out var existingBinding))
-                return existingBinding;
+            var binding = _bindings.OfType<NoArgsEventBinding>()
+                                  .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (binding != null)
+                DeregisterBinding(binding);
+        }
 
-            var handler = new EventBinding<T>(onEventNoArgs, priority);
-            _registeredNoArgHandlers.Add(onEventNoArgs, handler);
-            _needsSorting = true;
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// Deregisters a typed async handler
+        /// </summary>
+        public void Deregister(Func<T, UniTask> handler)
+        {
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
 
-            return Register(handler);
+            var binding = _bindings.OfType<TypedEventBinding<T>>()
+                                  .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (binding != null)
+                DeregisterBinding(binding);
         }
 
         /// <summary>
-        /// Registers a UniTask async function with no arguments to the EventBus
+        /// Deregisters a no-args async handler
         /// </summary>
-        public EventBinding<T> Register(Func<UniTask> onEventNoArgsUniAsync, int priority = 0)
+        public void Deregister(Func<UniTask> handler)
         {
-            if (onEventNoArgsUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
 
-            // Check if we've already registered this handler
-            if (_registeredNoArgUniAsyncHandlers.TryGetValue(onEventNoArgsUniAsync, out var existingBinding))
-                return existingBinding;
-
-            var handler = new EventBinding<T>(onEventNoArgsUniAsync, priority);
-            _registeredNoArgUniAsyncHandlers.Add(onEventNoArgsUniAsync, handler);
-            _needsSorting = true;
-
-            return Register(handler);
+            var binding = _bindings.OfType<NoArgsEventBinding>()
+                                  .FirstOrDefault(b => b.MatchesHandler(handler));
+            if (binding != null)
+                DeregisterBinding(binding);
         }
+        #endif
 
         /// <summary>
-        /// De-registers an event binding from the EventBus
+        /// Deregisters a binding directly
         /// </summary>
-        public void Deregister(EventBinding<T> binding)
+        public void Deregister(IEventBinding binding)
         {
-            if (binding == null)
-                throw new ArgumentNullException(nameof(binding));
+            if (binding == null) throw new ArgumentNullException(nameof(binding));
+            DeregisterBinding(binding);
+        }
 
-            if (_isCurrentlyRaising) {
+        private void DeregisterBinding(IEventBinding binding)
+        {
+            if (_isCurrentlyRaising)
+            {
                 if (!_bindingsPendingRemoval.Contains(binding))
                     _bindingsPendingRemoval.Add(binding);
-
-                return;
             }
-
-            _bindings.Remove(binding);
-        }
-
-        /// <summary>
-        /// De-registers an action handler from the EventBus
-        /// </summary>
-        public void Deregister(Action<T> onEvent)
-        {
-            if (onEvent == null)
-                throw new ArgumentNullException(nameof(onEvent));
-
-            if (_registeredHandlers.TryGetValue(onEvent, out var binding)) {
-                Deregister(binding);
-                _registeredHandlers.Remove(onEvent);
+            else
+            {
+                _bindings.Remove(binding);
             }
         }
 
         /// <summary>
-        /// De-registers a UniTask async function handler from the EventBus
-        /// </summary>
-        public void Deregister(Func<T, UniTask> onEventUniAsync)
-        {
-            if (onEventUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventUniAsync));
-
-            if (_registeredUniAsyncHandlers.TryGetValue(onEventUniAsync, out var binding)) {
-                Deregister(binding);
-                _registeredUniAsyncHandlers.Remove(onEventUniAsync);
-            }
-        }
-
-        /// <summary>
-        /// De-registers an action with no arguments from the EventBus
-        /// </summary>
-        public void Deregister(Action onEventNoArgs)
-        {
-            if (onEventNoArgs == null)
-                throw new ArgumentNullException(nameof(onEventNoArgs));
-
-            if (_registeredNoArgHandlers.TryGetValue(onEventNoArgs, out var binding)) {
-                Deregister(binding);
-                _registeredNoArgHandlers.Remove(onEventNoArgs);
-            }
-        }
-
-        /// <summary>
-        /// De-registers a UniTask async function with no arguments from the EventBus
-        /// </summary>
-        public void Deregister(Func<UniTask> onEventNoArgsUniAsync)
-        {
-            if (onEventNoArgsUniAsync == null)
-                throw new ArgumentNullException(nameof(onEventNoArgsUniAsync));
-
-            if (_registeredNoArgUniAsyncHandlers.TryGetValue(onEventNoArgsUniAsync, out var binding)) {
-                Deregister(binding);
-                _registeredNoArgUniAsyncHandlers.Remove(onEventNoArgsUniAsync);
-            }
-        }
-
-        /// <summary>
-        /// Clears all event bindings from the EventBus
+        /// Clears all event bindings
         /// </summary>
         public void ClearAllBindings()
         {
             _bindings.Clear();
             _bindingsPendingRemoval.Clear();
-            _registeredHandlers.Clear();
-            _registeredUniAsyncHandlers.Clear();
-            _registeredNoArgHandlers.Clear();
-            _registeredNoArgUniAsyncHandlers.Clear();
-
-            _lastRaisedValue = default(T);
         }
 
         #endregion
-        
-        /// <summary>
-        /// Raises the event, invoking all registered event bindings sequentially. Blocking.
-        /// </summary>
-        public void Raise(T @event = default)
-        {
-            RaiseAsync(@event).GetAwaiter().GetResult();
-        }
+
+        #region Raising Events
 
         /// <summary>
-        /// Raises the event, invoking all registered event bindings sequentially
+        /// Raises the event synchronously, invoking all registered bindings sequentially
         /// </summary>
-        public async UniTask RaiseAsync(T @event = default)
+        public void Raise(T eventData = default)
         {
-            await RaiseSequentialAsync(@event);
-        }
-
-        /// <summary>
-        /// Raises the event, invoking all registered event bindings sequentially (one after another)
-        /// </summary>
-        public async UniTask RaiseSequentialAsync(T @event = default)
-        {
-            _lastRaisedValue = @event;
             _isCurrentlyRaising = true;
 
-            if (_needsSorting)
-                SortBindings();
-
-            await InvokeBindingsSequentialAsync(@event);
+            InvokeBindingsSync(eventData);
 
             _isCurrentlyRaising = false;
+            ProcessPendingRemovals();
+        }
 
+        #if UNITASK_SUPPORT
+        /// <summary>
+        /// Raises the event asynchronously, invoking all registered bindings sequentially
+        /// </summary>
+        public async UniTask RaiseAsync(T eventData = default)
+        {
+            await RaiseSequentialAsync(eventData);
+        }
+
+        /// <summary>
+        /// Raises the event asynchronously, invoking all registered bindings sequentially
+        /// </summary>
+        public async UniTask RaiseSequentialAsync(T eventData = default)
+        {
+            _isCurrentlyRaising = true;
+
+            await InvokeBindingsSequentialAsync(eventData);
+
+            _isCurrentlyRaising = false;
             ProcessPendingRemovals();
         }
 
         /// <summary>
-        /// Raises the event, invoking all registered event bindings concurrently (all at once)
+        /// Raises the event asynchronously, invoking all registered bindings concurrently
         /// </summary>
-        public async UniTask RaiseConcurrentAsync(T @event = default)
+        public async UniTask RaiseConcurrentAsync(T eventData = default)
         {
-            _lastRaisedValue = @event;
             _isCurrentlyRaising = true;
 
-            if (_needsSorting)
-                SortBindings();
-
-            await InvokeBindingsConcurrentAsync(@event);
+            await InvokeBindingsConcurrentAsync(eventData);
 
             _isCurrentlyRaising = false;
-
             ProcessPendingRemovals();
         }
+        #endif
+
+        #endregion
 
         private void SortBindings()
         {
             _bindings.Sort((a, b) => b.Priority.CompareTo(a.Priority));
-            _needsSorting = false;
         }
 
-        private async UniTask InvokeBindingsSequentialAsync(T @event)
+        private void InvokeBindingsSync(T eventData)
         {
-            foreach (var binding in _bindings) {
-                await binding.InvokeAsync(@event);
+            // Create a snapshot to allow safe modification during iteration
+            var bindingsSnapshot = _bindings.ToArray();
+            
+            foreach (var binding in bindingsSnapshot)
+            {
+                // Skip if binding was removed during iteration
+                if (!_bindings.Contains(binding))
+                    continue;
+
+                // Check if event propagation should stop
+                if (eventData is IStoppableEvent stoppable && stoppable.StopPropagation)
+                    break;
+                    
+                if (binding is IEventBinding<T> typedBinding)
+                {
+                    typedBinding.Invoke(eventData);
+                }
+                else if (binding is IEventBindingNoArgs noArgsBinding)
+                {
+                    noArgsBinding.Invoke();
+                }
             }
         }
 
-        private async UniTask InvokeBindingsConcurrentAsync(T @event)
+        #if UNITASK_SUPPORT
+        private async UniTask InvokeBindingsSequentialAsync(T eventData)
         {
-            var tasks = _bindings.Select(async binding => await binding.InvokeAsync(@event));
+            // Create a snapshot to allow safe modification during iteration
+            var bindingsSnapshot = _bindings.ToArray();
+            
+            foreach (var binding in bindingsSnapshot)
+            {
+                // Skip if binding was removed during iteration
+                if (!_bindings.Contains(binding))
+                    continue;
+
+                // Check if event propagation should stop
+                if (eventData is IStoppableEvent stoppable && stoppable.StopPropagation)
+                    break;
+                    
+                if (binding is IEventBinding<T> typedBinding)
+                {
+                    await typedBinding.InvokeAsync(eventData);
+                }
+                else if (binding is IEventBindingNoArgs noArgsBinding)
+                {
+                    await noArgsBinding.InvokeAsync();
+                }
+            }
+        }
+
+        private async UniTask InvokeBindingsConcurrentAsync(T eventData)
+        {
+            var bindingsSnapshot = _bindings.ToArray();
+            
+            var tasks = bindingsSnapshot.Select(binding =>
+            {
+                if (!_bindings.Contains(binding))
+                    return UniTask.CompletedTask;
+                    
+                if (binding is IEventBinding<T> typedBinding)
+                    return typedBinding.InvokeAsync(eventData);
+                else if (binding is IEventBindingNoArgs noArgsBinding)
+                    return noArgsBinding.InvokeAsync();
+                else
+                    return UniTask.CompletedTask;
+            });
+
             await UniTask.WhenAll(tasks);
         }
+        #endif
 
         private void ProcessPendingRemovals()
         {
-            foreach (var binding in _bindingsPendingRemoval) {
+            foreach (var binding in _bindingsPendingRemoval)
+            {
                 _bindings.Remove(binding);
             }
 

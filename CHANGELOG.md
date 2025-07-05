@@ -1,3 +1,9 @@
+## [1.9.0] - 2025-07-04
+### Changes
+- Refactored binding implementation
+- Now supports polymorphic event raising on all implemented types via `EventBus` static
+- Clearing handlers during invoke is now safe
+
 ## [1.8.5] - 2025-06-11
 ### Changes
 - Raise method is now blocking

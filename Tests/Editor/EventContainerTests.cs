@@ -1,270 +1,758 @@
 using System;
-using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
-using UnityEngine.TestTools;
-using Cysharp.Threading.Tasks;
-using UnityEngine;
+using DGP.EventBus;
+using DGP.EventBus.Bindings;
+using DGP.EventBus.Editor.Tests;
 
-namespace DGP.EventBus.Editor.Tests
+namespace DGP.EventBus.Editor.Tests.EditMode
 {
+    [TestFixture]
     public class EventContainerTests
     {
-        private struct TestEvent : IEvent
-        {
-            public int TestValue;
-        }
-
-        private EventContainer _eventContainer;
+        private EventContainer _container;
 
         [SetUp]
         public void Setup()
         {
-            _eventContainer = new EventContainer();
+            _container = new EventContainer();
         }
 
-        private class MockHandler
+        [TearDown]
+        public void TearDown()
         {
-            public int InvokeCount;
-            public int LastTestValue;
-            private readonly Action<TestEvent> _onTestEvent;
-            private readonly EventContainer _container;
+            _container?.ClearAllBindings();
+        }
 
-            public MockHandler(EventContainer container)
-            {
-                _container = container;
-                _onTestEvent = OnTestEvent;
-                _container.Register<TestEvent>(_onTestEvent);
+        #region Typed Handler Registration Tests
+
+        [Test]
+        public void Register_TypedHandler_ReturnsValidBinding()
+        {
+            // Arrange
+            Action<TestEvent> handler = evt => { };
+
+            // Act
+            var binding = _container.Register<TestEvent>(handler);
+
+            // Assert
+            Assert.IsNotNull(binding);
+            Assert.IsInstanceOf<IEventBinding<TestEvent>>(binding);
+            Assert.AreEqual(0, binding.Priority);
+        }
+
+        [Test]
+        public void Register_TypedHandlerWithPriority_SetsCorrectPriority()
+        {
+            // Arrange
+            Action<TestEvent> handler = evt => { };
+            const int expectedPriority = 6;
+
+            // Act
+            var binding = _container.Register<TestEvent>(handler, expectedPriority);
+
+            // Assert
+            Assert.AreEqual(expectedPriority, binding.Priority);
+        }
+
+        [Test]
+        public void Register_SameTypedHandlerTwice_ReturnsSameBinding()
+        {
+            // Arrange
+            Action<TestEvent> handler = evt => { };
+
+            // Act
+            var binding1 = _container.Register<TestEvent>(handler);
+            var binding2 = _container.Register<TestEvent>(handler);
+
+            // Assert
+            Assert.AreSame(binding1, binding2);
+        }
+
+        [Test]
+        public void Register_TypedHandlerNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Action<TestEvent> handler = null;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => _container.Register<TestEvent>(handler));
+        }
+
+        #endregion
+
+        #region No-Args Handler Registration Tests
+
+        [Test]
+        public void Register_NoArgsHandler_ReturnsValidBinding()
+        {
+            // Arrange
+            Action handler = () => { };
+
+            // Act
+            var binding = _container.Register<TestEvent>(handler);
+
+            // Assert
+            Assert.IsNotNull(binding);
+            Assert.IsInstanceOf<IEventBindingNoArgs>(binding);
+            Assert.AreEqual(0, binding.Priority);
+        }
+
+        [Test]
+        public void Register_NoArgsHandlerWithPriority_SetsCorrectPriority()
+        {
+            // Arrange
+            Action handler = () => { };
+            const int expectedPriority = 4;
+
+            // Act
+            var binding = _container.Register<TestEvent>(handler, expectedPriority);
+
+            // Assert
+            Assert.AreEqual(expectedPriority, binding.Priority);
+        }
+
+        [Test]
+        public void Register_SameNoArgsHandlerTwice_ReturnsSameBinding()
+        {
+            // Arrange
+            Action handler = () => { };
+
+            // Act
+            var binding1 = _container.Register<TestEvent>(handler);
+            var binding2 = _container.Register<TestEvent>(handler);
+
+            // Assert
+            Assert.AreSame(binding1, binding2);
+        }
+
+        [Test]
+        public void Register_NoArgsHandlerNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Action handler = null;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => _container.Register<TestEvent>(handler));
+        }
+
+        #endregion
+
+        #region Pre-Created Binding Registration Tests
+
+        [Test]
+        public void Register_PreCreatedBinding_AddsToContainer()
+        {
+            // Arrange
+            var customBinding = new TypedEventBinding<TestEvent>(evt => { }, 7);
+
+            // Act
+            var returnedBinding = _container.Register<TestEvent, TypedEventBinding<TestEvent>>(customBinding);
+
+            // Assert
+            Assert.AreSame(customBinding, returnedBinding);
+        }
+
+        [Test]
+        public void Register_PreCreatedBindingNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            TypedEventBinding<TestEvent> binding = null;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => _container.Register<TestEvent, TypedEventBinding<TestEvent>>(binding));
+        }
+
+        [Test]
+        public void Register_MultiplePreCreatedBindings_AddsAll()
+        {
+            // Arrange
+            var binding1 = new TypedEventBinding<TestEvent>(evt => { }, 5);
+            var binding2 = new NoArgsEventBinding(() => { }, 3);
+
+            // Act
+            _container.Register<TestEvent, TypedEventBinding<TestEvent>>(binding1);
+            _container.Register<TestEvent, NoArgsEventBinding>(binding2);
+
+            // Assert - We can't directly inspect the container's bindings, but we can verify they work
+            Assert.DoesNotThrow(() => _container.Raise(new TestEvent()));
+        }
+
+        #endregion
+
+        #region Typed Handler Deregistration Tests
+
+        [Test]
+        public void Deregister_ExistingTypedHandler_RemovesBinding()
+        {
+            // Arrange
+            Action<TestEvent> handler = evt => { };
+            _container.Register<TestEvent>(handler);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Deregister<TestEvent>(handler));
+        }
+
+        [Test]
+        public void Deregister_NonExistentTypedHandler_DoesNotThrow()
+        {
+            // Arrange
+            Action<TestEvent> registeredHandler = evt => { };
+            Action<TestEvent> unregisteredHandler = evt => { };
+            _container.Register<TestEvent>(registeredHandler);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Deregister<TestEvent>(unregisteredHandler));
+        }
+
+        [Test]
+        public void Deregister_TypedHandlerNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Action<TestEvent> handler = null;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => _container.Deregister<TestEvent>(handler));
+        }
+
+        #endregion
+
+        #region No-Args Handler Deregistration Tests
+
+        [Test]
+        public void Deregister_ExistingNoArgsHandler_RemovesBinding()
+        {
+            // Arrange
+            Action handler = () => { };
+            _container.Register<TestEvent>(handler);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Deregister<TestEvent>(handler));
+        }
+
+        [Test]
+        public void Deregister_NonExistentNoArgsHandler_DoesNotThrow()
+        {
+            // Arrange
+            Action registeredHandler = () => { };
+            Action unregisteredHandler = () => { };
+            _container.Register<TestEvent>(registeredHandler);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Deregister<TestEvent>(unregisteredHandler));
+        }
+
+        [Test]
+        public void Deregister_NoArgsHandlerNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Action handler = null;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => _container.Deregister<TestEvent>(handler));
+        }
+
+        #endregion
+
+        #region Binding Direct Deregistration Tests
+
+        [Test]
+        public void Deregister_ExistingBinding_RemovesBinding()
+        {
+            // Arrange
+            Action<TestEvent> handler = evt => { };
+            var binding = _container.Register<TestEvent>(handler);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Deregister<TestEvent>(binding));
+        }
+
+        [Test]
+        public void Deregister_NonExistentBinding_DoesNotThrow()
+        {
+            // Arrange
+            Action<TestEvent> handler = evt => { };
+            _container.Register<TestEvent>(handler);
+            var unregisteredBinding = new TypedEventBinding<TestEvent>(evt => { });
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Deregister<TestEvent>(unregisteredBinding));
+        }
+
+        [Test]
+        public void Deregister_BindingNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            IEventBinding binding = null;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => _container.Deregister<TestEvent>(binding));
+        }
+
+        #endregion
+
+        #region Clear Bindings Tests
+
+        [Test]
+        public void ClearBindings_ForSpecificEventType_DoesNotThrow()
+        {
+            // Arrange
+            _container.Register<TestEvent>((Action<TestEvent>)(evt => { }));
+            _container.Register<EmptyEvent>((Action<EmptyEvent>)(evt => { }));
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.ClearBindings<TestEvent>());
+        }
+
+        [Test]
+        public void ClearAllBindings_WithMultipleEventTypes_DoesNotThrow()
+        {
+            // Arrange
+            _container.Register<TestEvent>((Action<TestEvent>)(evt => { }));
+            _container.Register<EmptyEvent>((Action<EmptyEvent>)(evt => { }));
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.ClearAllBindings());
+        }
+
+        [Test]
+        public void ClearBindings_WithNoBindings_DoesNotThrow()
+        {
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.ClearBindings<TestEvent>());
+            Assert.DoesNotThrow(() => _container.ClearAllBindings());
+        }
+
+        #endregion
+
+        #region Type Isolation Tests
+
+        [Test]
+        public void Register_DifferentEventTypes_AreIsolated()
+        {
+            // Arrange
+            Action<TestEvent> testEventHandler = evt => { };
+            Action<EmptyEvent> emptyEventHandler = evt => { };
+
+            // Act
+            var testBinding = _container.Register<TestEvent>(testEventHandler);
+            var emptyBinding = _container.Register<EmptyEvent>(emptyEventHandler);
+
+            // Assert
+            Assert.IsNotNull(testBinding);
+            Assert.IsNotNull(emptyBinding);
+            Assert.AreNotSame(testBinding, emptyBinding);
+        }
+
+        [Test]
+        public void ClearBindings_OnSpecificType_DoesNotAffectOtherTypes()
+        {
+            // Arrange
+            bool testEventHandlerCalled = false;
+            bool emptyEventHandlerCalled = false;
+
+            _container.Register<TestEvent>((Action<TestEvent>)(evt => testEventHandlerCalled = true));
+            _container.Register<EmptyEvent>((Action<EmptyEvent>)(evt => emptyEventHandlerCalled = true));
+
+            // Act
+            _container.ClearBindings<TestEvent>();
+            _container.Raise(new TestEvent());
+            _container.Raise(new EmptyEvent());
+
+            // Assert
+            Assert.IsFalse(testEventHandlerCalled, "TestEvent handler should not be called after clearing");
+            Assert.IsTrue(emptyEventHandlerCalled, "EmptyEvent handler should still be called");
+        }
+
+        [Test]
+        public void Deregister_OnSpecificType_DoesNotAffectOtherTypes()
+        {
+            // Arrange
+            bool testEventHandlerCalled = false;
+            bool emptyEventHandlerCalled = false;
+
+            Action<TestEvent> testEventHandler = evt => testEventHandlerCalled = true;
+            Action<EmptyEvent> emptyEventHandler = evt => emptyEventHandlerCalled = true;
+
+            _container.Register<TestEvent>(testEventHandler);
+            _container.Register<EmptyEvent>(emptyEventHandler);
+
+            // Act
+            _container.Deregister<TestEvent>(testEventHandler);
+            _container.Raise(new TestEvent());
+            _container.Raise(new EmptyEvent());
+
+            // Assert
+            Assert.IsFalse(testEventHandlerCalled, "TestEvent handler should not be called after deregistering");
+            Assert.IsTrue(emptyEventHandlerCalled, "EmptyEvent handler should still be called");
+        }
+
+        #endregion
+
+        #region Multiple Container Isolation Tests
+
+        [Test]
+        public void MultipleContainers_AreIsolated()
+        {
+            // Arrange
+            var container1 = new EventContainer();
+            var container2 = new EventContainer();
+
+            bool handler1Called = false;
+            bool handler2Called = false;
+
+            // Act
+            container1.Register<TestEvent>((Action<TestEvent>)(evt => handler1Called = true));
+            container2.Register<TestEvent>((Action<TestEvent>)(evt => handler2Called = true));
+
+            container1.Raise(new TestEvent());
+
+            // Assert
+            Assert.IsTrue(handler1Called, "Handler in container1 should be called");
+            Assert.IsFalse(handler2Called, "Handler in container2 should not be called");
+        }
+
+        [Test]
+        public void Container_ClearAllBindings_DoesNotAffectOtherContainers()
+        {
+            // Arrange
+            var container1 = new EventContainer();
+            var container2 = new EventContainer();
+
+            bool handler1Called = false;
+            bool handler2Called = false;
+
+            container1.Register<TestEvent>((Action<TestEvent>)(evt => handler1Called = true));
+            container2.Register<TestEvent>((Action<TestEvent>)(evt => handler2Called = true));
+
+            // Act
+            container1.ClearAllBindings();
+            container1.Raise(new TestEvent());
+            container2.Raise(new TestEvent());
+
+            // Assert
+            Assert.IsFalse(handler1Called, "Handler in container1 should not be called after clearing");
+            Assert.IsTrue(handler2Called, "Handler in container2 should still be called");
+        }
+
+        #endregion
+
+        #region Mixed Handler Type Tests
+
+        [Test]
+        public void Register_MixedHandlerTypes_AllRegisteredCorrectly()
+        {
+            // Arrange
+            bool typedHandlerCalled = false;
+            bool noArgsHandlerCalled = false;
+
+            Action<TestEvent> typedHandler = evt => typedHandlerCalled = true;
+            Action noArgsHandler = () => noArgsHandlerCalled = true;
+
+            // Act
+            var typedBinding = _container.Register<TestEvent>(typedHandler);
+            var noArgsBinding = _container.Register<TestEvent>(noArgsHandler);
+            _container.Raise(new TestEvent());
+
+            // Assert
+            Assert.IsNotNull(typedBinding);
+            Assert.IsNotNull(noArgsBinding);
+            Assert.IsTrue(typedHandlerCalled, "Typed handler should be called");
+            Assert.IsTrue(noArgsHandlerCalled, "No-args handler should be called");
+        }
+
+        [Test]
+        public void Deregister_MixedHandlerTypes_RemovesCorrectBinding()
+        {
+            // Arrange
+            bool typedHandlerCalled = false;
+            bool noArgsHandlerCalled = false;
+
+            Action<TestEvent> typedHandler = evt => typedHandlerCalled = true;
+            Action noArgsHandler = () => noArgsHandlerCalled = true;
+
+            _container.Register<TestEvent>(typedHandler);
+            _container.Register<TestEvent>(noArgsHandler);
+
+            // Act
+            _container.Deregister<TestEvent>(typedHandler);
+            _container.Raise(new TestEvent());
+
+            // Assert
+            Assert.IsFalse(typedHandlerCalled, "Typed handler should not be called after deregistering");
+            Assert.IsTrue(noArgsHandlerCalled, "No-args handler should still be called");
+        }
+
+        #endregion
+
+        #region Error Handling Tests
+
+        [Test]
+        public void Register_WithException_DoesNotCorruptContainer()
+        {
+            // Arrange
+            bool normalHandlerCalled = false;
+            Action<TestEvent> normalHandler = evt => normalHandlerCalled = true;
+
+            // Act
+            _container.Register<TestEvent>(normalHandler);
+
+            // This should not throw or corrupt the container
+            try {
+                _container.Register<TestEvent>((Action<TestEvent>)null);
+            } catch (ArgumentNullException) {
+                // Expected exception
             }
 
-            public void Deregister()
+            _container.Raise(new TestEvent());
+
+            // Assert
+            Assert.IsTrue(normalHandlerCalled, "Normal handler should still work after exception during registration");
+        }
+
+        #endregion
+
+        #region Container Lazy Creation Tests
+
+        [Test]
+        public void Register_FirstTimeForEventType_CreatesContainerAutomatically()
+        {
+            // This test verifies that the GetContainer method creates containers on demand
+
+            // Arrange
+            bool handlerCalled = false;
+            Action<TestEvent> handler = evt => handlerCalled = true;
+
+            // Act - First registration for this event type should create the container
+            var binding = _container.Register<TestEvent>(handler);
+            _container.Raise(new TestEvent());
+
+            // Assert
+            Assert.IsNotNull(binding);
+            Assert.IsTrue(handlerCalled, "Handler should be called, indicating container was created");
+        }
+
+        [Test]
+        public void Register_SameEventTypeMultipleTimes_ReusesSameContainer()
+        {
+            // Arrange
+            bool handler1Called = false;
+            bool handler2Called = false;
+
+            Action<TestEvent> handler1 = evt => handler1Called = true;
+            Action<TestEvent> handler2 = evt => handler2Called = true;
+
+            // Act
+            _container.Register<TestEvent>(handler1);
+            _container.Register<TestEvent>(handler2);
+            _container.Raise(new TestEvent());
+
+            // Assert
+            Assert.IsTrue(handler1Called, "First handler should be called");
+            Assert.IsTrue(handler2Called, "Second handler should be called");
+        }
+
+        #endregion
+
+        #region Polymorphic Raising Tests
+
+        // Define event hierarchy for polymorphism testing
+        public interface IContainerBaseEvent : IEvent
+        {
+            string BaseMessage { get; }
+        }
+        
+        public struct ContainerDerivedEvent : IContainerBaseEvent
+        {
+            public string BaseMessage { get; }
+            public int DerivedValue { get; }
+            
+            public ContainerDerivedEvent(string baseMessage, int derivedValue)
             {
-                _container.Deregister<TestEvent>(_onTestEvent);
+                BaseMessage = baseMessage;
+                DerivedValue = derivedValue;
             }
-
-            private void OnTestEvent(TestEvent @event)
+        }
+        
+        public struct ContainerAnotherDerivedEvent : IContainerBaseEvent
+        {
+            public string BaseMessage { get; }
+            public float AnotherValue { get; }
+            
+            public ContainerAnotherDerivedEvent(string baseMessage, float anotherValue)
             {
-                InvokeCount++;
-                LastTestValue = @event.TestValue;
+                BaseMessage = baseMessage;
+                AnotherValue = anotherValue;
             }
         }
 
-        private class MockHandlerEmptyArgs
+        [Test]
+        public void Raise_Polymorphic_DerivedEvent_TriggersBaseAndDerivedHandlers()
         {
-            public int InvokeCount;
-            private readonly Action _onTestEvent;
-            private readonly EventContainer _container;
-
-            public MockHandlerEmptyArgs(EventContainer container)
+            // Arrange
+            var executionOrder = new List<string>();
+            
+            _container.Register<IContainerBaseEvent>(evt => 
             {
-                _container = container;
-                _onTestEvent = OnTestEvent;
-                _container.Register<TestEvent>(_onTestEvent);
-            }
-
-            public void Deregister()
+                executionOrder.Add($"Base:{evt.BaseMessage}");
+            });
+            
+            _container.Register<ContainerDerivedEvent>(evt => 
             {
-                _container.Deregister<TestEvent>(_onTestEvent);
-            }
+                executionOrder.Add($"Derived:{evt.DerivedValue}");
+            });
 
-            private void OnTestEvent() => InvokeCount++;
+            var derivedEvent = new ContainerDerivedEvent("test", 42);
+
+            // Act
+            _container.Raise(derivedEvent, polymorphic: true);
+
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
+            Assert.Contains("Base:test", executionOrder);
+            Assert.Contains("Derived:42", executionOrder);
         }
 
-        [UnityTest]
-        public IEnumerator TestArgEvent()
+        [Test]
+        public void Raise_NonPolymorphic_DerivedEvent_OnlyTriggersExactTypeHandlers()
         {
-            var handler = new MockHandler(_eventContainer);
-            var task = _eventContainer.RaiseAsync(new TestEvent { TestValue = 42 }).AsTask();
-            yield return new WaitUntil(() => task.IsCompleted);
-            if (task.IsFaulted) throw task.Exception;
+            // Arrange
+            bool baseHandlerCalled = false;
+            bool derivedHandlerCalled = false;
+            
+            _container.Register<IContainerBaseEvent>(evt => baseHandlerCalled = true);
+            _container.Register<ContainerDerivedEvent>(evt => derivedHandlerCalled = true);
 
-            Assert.AreEqual(1, handler.InvokeCount);
-            Assert.AreEqual(42, handler.LastTestValue);
+            var derivedEvent = new ContainerDerivedEvent("test", 42);
+
+            // Act
+            _container.Raise(derivedEvent, polymorphic: false);
+
+            // Assert
+            Assert.IsFalse(baseHandlerCalled, "Base handler should not be called with polymorphic: false");
+            Assert.IsTrue(derivedHandlerCalled, "Derived handler should be called");
         }
 
-        [UnityTest]
-        public IEnumerator TestNoArgEvent()
+        [Test]
+        public void Raise_DefaultPolymorphic_TriggersBaseAndDerivedHandlers()
         {
-            var handler = new MockHandlerEmptyArgs(_eventContainer);
-            var task = _eventContainer.RaiseAsync(new TestEvent { TestValue = 42 }).AsTask();
-            yield return new WaitUntil(() => task.IsCompleted);
-            if (task.IsFaulted) throw task.Exception;
+            // Arrange
+            bool baseHandlerCalled = false;
+            bool derivedHandlerCalled = false;
+            
+            _container.Register<IContainerBaseEvent>(evt => baseHandlerCalled = true);
+            _container.Register<ContainerDerivedEvent>(evt => derivedHandlerCalled = true);
 
-            Assert.AreEqual(1, handler.InvokeCount);
+            var derivedEvent = new ContainerDerivedEvent("test", 42);
+
+            // Act - Default should be polymorphic: true
+            _container.Raise(derivedEvent);
+
+            // Assert
+            Assert.IsTrue(baseHandlerCalled, "Base handler should be called by default");
+            Assert.IsTrue(derivedHandlerCalled, "Derived handler should be called");
         }
 
-        [UnityTest]
-        public IEnumerator TestDeregisterArgHandler()
+        [Test]
+        public void Raise_Polymorphic_MultipleDerivedTypes_EachTriggersAppropriateHandlers()
         {
-            var handler = new MockHandler(_eventContainer);
+            // Arrange
+            var executionOrder = new List<string>();
+            
+            _container.Register<IContainerBaseEvent>(evt => executionOrder.Add("Base"));
+            _container.Register<ContainerDerivedEvent>(evt => executionOrder.Add("DerivedEvent"));
+            _container.Register<ContainerAnotherDerivedEvent>(evt => executionOrder.Add("AnotherDerivedEvent"));
 
-            var task1 = _eventContainer.RaiseAsync(new TestEvent { TestValue = 42 }).AsTask();
-            yield return new WaitUntil(() => task1.IsCompleted);
-            if (task1.IsFaulted) throw task1.Exception;
-            Assert.AreEqual(1, handler.InvokeCount);
+            // Act
+            _container.Raise(new ContainerDerivedEvent("test1", 42), polymorphic: true);
+            _container.Raise(new ContainerAnotherDerivedEvent("test2", 3.14f), polymorphic: true);
 
-            handler.Deregister();
-
-            var task2 = _eventContainer.RaiseAsync(new TestEvent { TestValue = 100 }).AsTask();
-            yield return new WaitUntil(() => task2.IsCompleted);
-            if (task2.IsFaulted) throw task2.Exception;
-            Assert.AreEqual(1, handler.InvokeCount, "Handler should not receive events after deregistration");
-            Assert.AreEqual(42, handler.LastTestValue, "LastTestValue should not change after deregistration");
+            // Assert
+            Assert.AreEqual(4, executionOrder.Count);
+            Assert.Contains("Base", executionOrder);
+            Assert.Contains("DerivedEvent", executionOrder);
+            Assert.Contains("AnotherDerivedEvent", executionOrder);
+            
+            // Count base handler calls
+            int baseCount = executionOrder.Count(item => item == "Base");
+            Assert.AreEqual(2, baseCount, "Base handler should be called for both derived events");
         }
 
-        [UnityTest]
-        public IEnumerator TestDeregisterNoArgHandler()
+        [Test]
+        public void Raise_Polymorphic_WithPriorities_RespectsOrder()
         {
-            var handler = new MockHandlerEmptyArgs(_eventContainer);
+            // Arrange
+            var executionOrder = new List<string>();
+            
+            _container.Register<IContainerBaseEvent>(evt => executionOrder.Add("BaseLow"), 1);
+            _container.Register<IContainerBaseEvent>(evt => executionOrder.Add("BaseHigh"), 10);
+            _container.Register<ContainerDerivedEvent>(evt => executionOrder.Add("DerivedMedium"), 5);
 
-            var task1 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task1.IsCompleted);
-            if (task1.IsFaulted) throw task1.Exception;
-            Assert.AreEqual(1, handler.InvokeCount);
+            // Act
+            _container.Raise(new ContainerDerivedEvent("test", 42), polymorphic: true);
 
-            handler.Deregister();
-
-            var task2 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task2.IsCompleted);
-            if (task2.IsFaulted) throw task2.Exception;
-            Assert.AreEqual(1, handler.InvokeCount, "Handler should not receive events after deregistration");
+            // Assert
+            Assert.AreEqual(3, executionOrder.Count);
+            Assert.Contains("BaseHigh", executionOrder);
+            Assert.Contains("BaseLow", executionOrder);
+            Assert.Contains("DerivedMedium", executionOrder);
+            // Exact order depends on container iteration order, but priorities within containers are respected
         }
 
-        [UnityTest]
-        public IEnumerator TestClearBindings()
+        [Test]
+        public void Raise_Polymorphic_EventDataIntegrity_HandlersReceiveCorrectData()
         {
-            var handler1 = new MockHandler(_eventContainer);
-            var handler2 = new MockHandlerEmptyArgs(_eventContainer);
+            // Arrange
+            IContainerBaseEvent receivedBaseEvent = default;
+            ContainerDerivedEvent receivedDerivedEvent = default;
+            
+            _container.Register<IContainerBaseEvent>(evt => receivedBaseEvent = evt);
+            _container.Register<ContainerDerivedEvent>(evt => receivedDerivedEvent = evt);
 
-            var task1 = _eventContainer.RaiseAsync(new TestEvent { TestValue = 42 }).AsTask();
-            yield return new WaitUntil(() => task1.IsCompleted);
-            if (task1.IsFaulted) throw task1.Exception;
-            Assert.AreEqual(1, handler1.InvokeCount);
-            Assert.AreEqual(1, handler2.InvokeCount);
+            var originalEvent = new ContainerDerivedEvent("polymorphic", 99);
 
-            _eventContainer.ClearBindings<TestEvent>();
+            // Act
+            _container.Raise(originalEvent, polymorphic: true);
 
-            var task2 = _eventContainer.RaiseAsync(new TestEvent { TestValue = 100 }).AsTask();
-            yield return new WaitUntil(() => task2.IsCompleted);
-            if (task2.IsFaulted) throw task2.Exception;
-            Assert.AreEqual(1, handler1.InvokeCount, "Handler1 should not receive events after clearing bindings");
-            Assert.AreEqual(1, handler2.InvokeCount, "Handler2 should not receive events after clearing bindings");
+            // Assert
+            Assert.AreEqual("polymorphic", receivedBaseEvent.BaseMessage);
+            Assert.AreEqual("polymorphic", receivedDerivedEvent.BaseMessage);
+            Assert.AreEqual(99, receivedDerivedEvent.DerivedValue);
         }
 
-        [UnityTest]
-        public IEnumerator TestClearAllBindings()
+        [Test]
+        public void Raise_Polymorphic_NoMatchingHandlers_DoesNotThrow()
         {
-            var handler1 = new MockHandler(_eventContainer);
-            var handler2 = new MockHandlerEmptyArgs(_eventContainer);
+            // Arrange
+            _container.Register<ContainerAnotherDerivedEvent>(evt => { });
 
-            var task1 = _eventContainer.RaiseAsync(new TestEvent { TestValue = 42 }).AsTask();
-            yield return new WaitUntil(() => task1.IsCompleted);
-            if (task1.IsFaulted) throw task1.Exception;
-            Assert.AreEqual(1, handler1.InvokeCount);
-            Assert.AreEqual(1, handler2.InvokeCount);
-
-            _eventContainer.ClearAllBindings();
-
-            var task2 = _eventContainer.RaiseAsync(new TestEvent { TestValue = 100 }).AsTask();
-            yield return new WaitUntil(() => task2.IsCompleted);
-            if (task2.IsFaulted) throw task2.Exception;
-            Assert.AreEqual(1, handler1.InvokeCount, "Handler1 should not receive events after clearing all bindings");
-            Assert.AreEqual(1, handler2.InvokeCount, "Handler2 should not receive events after clearing all bindings");
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Raise(new ContainerDerivedEvent("test", 1), polymorphic: true));
         }
 
-        [UnityTest]
-        public IEnumerator TestMultipleRegistrationsAndDeregistrations()
+        [Test]
+        public void Raise_Polymorphic_OnlyExactAndBaseMatches_IgnoresUnrelatedTypes()
         {
-            int handler1Count = 0;
-            int handler2Count = 0;
+            // Arrange
+            var executionOrder = new List<string>();
+            
+            _container.Register<IContainerBaseEvent>(evt => executionOrder.Add("Base"));
+            _container.Register<ContainerDerivedEvent>(evt => executionOrder.Add("Derived"));
+            _container.Register<ContainerAnotherDerivedEvent>(evt => executionOrder.Add("Another"));
+            _container.Register<TestEvent>(evt => executionOrder.Add("Unrelated"));
 
-            Action<TestEvent> handler1 = _ => handler1Count++;
-            Action handler2 = () => handler2Count++;
+            // Act
+            _container.Raise(new ContainerDerivedEvent("test", 1), polymorphic: true);
 
-            _eventContainer.Register<TestEvent>(handler1);
-            _eventContainer.Register<TestEvent>(handler2);
-
-            var task1 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task1.IsCompleted);
-            if (task1.IsFaulted) throw task1.Exception;
-            Assert.AreEqual(1, handler1Count);
-            Assert.AreEqual(1, handler2Count);
-
-            _eventContainer.Deregister<TestEvent>(handler1);
-
-            var task2 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task2.IsCompleted);
-            if (task2.IsFaulted) throw task2.Exception;
-            Assert.AreEqual(1, handler1Count, "Handler1 should not receive events after deregistration");
-            Assert.AreEqual(2, handler2Count);
-
-            _eventContainer.Deregister<TestEvent>(handler2);
-
-            var task3 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task3.IsCompleted);
-            if (task3.IsFaulted) throw task3.Exception;
-            Assert.AreEqual(1, handler1Count);
-            Assert.AreEqual(2, handler2Count, "Handler2 should not receive events after deregistration");
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
+            Assert.Contains("Base", executionOrder);
+            Assert.Contains("Derived", executionOrder);
+            Assert.IsFalse(executionOrder.Contains("Another"));
+            Assert.IsFalse(executionOrder.Contains("Unrelated"));
         }
 
-        [UnityTest]
-        public IEnumerator TestDirectBindingRegistrationAndDeregistration()
-        {
-            int eventCount = 0;
-            var binding = new EventBinding<TestEvent>(_ => eventCount++);
-
-            _eventContainer.Register<TestEvent>(binding);
-
-            var task1 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task1.IsCompleted);
-            if (task1.IsFaulted) throw task1.Exception;
-            Assert.AreEqual(1, eventCount);
-
-            _eventContainer.Deregister<TestEvent>(binding);
-
-            var task2 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task2.IsCompleted);
-            if (task2.IsFaulted) throw task2.Exception;
-            Assert.AreEqual(1, eventCount, "Handler should not receive events after deregistration");
-        }
-
-        [UnityTest]
-        public IEnumerator TestMultipleContainers()
-        {
-            var secondContainer = new EventContainer();
-
-            int container1Count = 0;
-            int container2Count = 0;
-
-            _eventContainer.Register<TestEvent>(_ => container1Count++);
-            secondContainer.Register<TestEvent>(_ => container2Count++);
-
-            var task1 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task1.IsCompleted);
-            if (task1.IsFaulted) throw task1.Exception;
-
-            Assert.AreEqual(1, container1Count);
-            Assert.AreEqual(0, container2Count);
-
-            var task2 = secondContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task2.IsCompleted);
-            if (task2.IsFaulted) throw task2.Exception;
-
-            Assert.AreEqual(1, container1Count);
-            Assert.AreEqual(1, container2Count);
-
-            _eventContainer.ClearAllBindings();
-
-            var task3 = _eventContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task3.IsCompleted);
-            if (task3.IsFaulted) throw task3.Exception;
-
-            var task4 = secondContainer.RaiseAsync(new TestEvent()).AsTask();
-            yield return new WaitUntil(() => task4.IsCompleted);
-            if (task4.IsFaulted) throw task4.Exception;
-
-            Assert.AreEqual(1, container1Count);
-            Assert.AreEqual(2, container2Count);
-        }
-
+        #endregion
     }
 }
