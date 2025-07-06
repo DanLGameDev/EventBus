@@ -50,7 +50,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(testEvent).RaiseAsync().AsTask();
+            var task = RaiseEvent.Event(testEvent).RaiseAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
 
@@ -73,7 +73,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(testEvent)
+            var task = RaiseEvent.Event(testEvent)
                 .WithContainer(_testContainer)
                 .RaiseAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
@@ -105,7 +105,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(testEvent).RaiseSequentialAsync().AsTask();
+            var task = RaiseEvent.Event(testEvent).RaiseSequentialAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
 
@@ -134,7 +134,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(testEvent).RaiseConcurrentAsync().AsTask();
+            var task = RaiseEvent.Event(testEvent).RaiseConcurrentAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
 
@@ -161,7 +161,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(new TestEvent())
+            var task = RaiseEvent.Event(new TestEvent())
                 .When(() => condition)
                 .RaiseAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
@@ -185,7 +185,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(new TestEvent())
+            var task = RaiseEvent.Event(new TestEvent())
                 .When(() => condition)
                 .RaiseAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
@@ -224,7 +224,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             }, 5);
 
             // Act
-            var task = EventRaise.Event(new TestEvent()).RaiseSequentialAsync().AsTask();
+            var task = RaiseEvent.Event(new TestEvent()).RaiseSequentialAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
 
@@ -257,7 +257,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             }, 5);
 
             // Act
-            var task = EventRaise.Event(new TestEvent())
+            var task = RaiseEvent.Event(new TestEvent())
                 .WithContainer(_testContainer)
                 .RaiseSequentialAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
@@ -285,7 +285,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(new TestEvent()).RaiseAsync().AsTask();
+            var task = RaiseEvent.Event(new TestEvent()).RaiseAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
 
             // Assert
@@ -313,7 +313,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             }, 5);
 
             // Act
-            var task = EventRaise.Event(new TestEvent()).RaiseSequentialAsync().AsTask();
+            var task = RaiseEvent.Event(new TestEvent()).RaiseSequentialAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
 
             // Assert
@@ -347,7 +347,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event(new TestEvent(123, "fluent"))
+            var task = RaiseEvent.Event(new TestEvent(123, "fluent"))
                 .WithContainer(_testContainer)
                 .WithPolymorphic(false)
                 .When(() => condition)
@@ -380,7 +380,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act - Start with container, switch to global
-            var task = EventRaise.Event(new TestEvent())
+            var task = RaiseEvent.Event(new TestEvent())
                 .WithContainer(_testContainer)
                 .WithGlobalBus()
                 .RaiseAsync().AsTask();
@@ -400,7 +400,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
         public IEnumerator RaiseAsync_NoHandlers_CompletesSuccessfully()
         {
             // Act
-            var task = EventRaise.Event(new TestEvent()).RaiseAsync().AsTask();
+            var task = RaiseEvent.Event(new TestEvent()).RaiseAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
 
@@ -421,7 +421,7 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             });
 
             // Act
-            var task = EventRaise.Event<EmptyEvent>().RaiseAsync().AsTask();
+            var task = RaiseEvent.Event<EmptyEvent>().RaiseAsync().AsTask();
             yield return new WaitUntil(() => task.IsCompleted);
             if (task.IsFaulted) throw task.Exception;
 

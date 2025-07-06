@@ -37,7 +37,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             var testEvent = new TestEvent(42, "test");
 
             // Act
-            var raiser = EventRaise.Event(testEvent);
+            var raiser = RaiseEvent.Event(testEvent);
 
             // Assert
             Assert.IsNotNull(raiser);
@@ -48,7 +48,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         public void Event_WithDefaultEvent_CreatesValidBuilder()
         {
             // Act
-            var raiser = EventRaise.Event<EmptyEvent>();
+            var raiser = RaiseEvent.Event<EmptyEvent>();
 
             // Assert
             Assert.IsNotNull(raiser);
@@ -73,7 +73,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             });
 
             // Act
-            EventRaise.Event(testEvent)
+            RaiseEvent.Event(testEvent)
                 .WithGlobalBus()
                 .RaiseSync();
 
@@ -91,7 +91,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<TestEvent>.Register(evt => handlerCalled = true);
 
             // Act
-            EventRaise.Event(testEvent).RaiseSync();
+            RaiseEvent.Event(testEvent).RaiseSync();
 
             // Assert
             Assert.IsTrue(handlerCalled);
@@ -117,7 +117,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<TestEvent>.Register(evt => globalHandlerCalled = true);
 
             // Act
-            EventRaise.Event(testEvent)
+            RaiseEvent.Event(testEvent)
                 .WithContainer(_testContainer)
                 .RaiseSync();
 
@@ -131,7 +131,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                EventRaise.Event(new TestEvent()).WithContainer(null));
+                RaiseEvent.Event(new TestEvent()).WithContainer(null));
         }
 
         [Test]
@@ -146,7 +146,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<TestEvent>.Register(evt => globalHandlerCalled = true);
 
             // Act
-            EventRaise.Event(testEvent)
+            RaiseEvent.Event(testEvent)
                 .WithContainer(_testContainer)
                 .WithGlobalBus()
                 .RaiseSync();
@@ -168,7 +168,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             
             // Act & Assert - Should not throw
             Assert.DoesNotThrow(() => 
-                EventRaise.Event(new TestEvent())
+                RaiseEvent.Event(new TestEvent())
                     .WithContainer(_testContainer)
                     .WithPolymorphic(true)
                     .RaiseSync());
@@ -179,7 +179,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         {
             // Act & Assert - Should not throw
             Assert.DoesNotThrow(() => 
-                EventRaise.Event(new TestEvent())
+                RaiseEvent.Event(new TestEvent())
                     .WithContainer(_testContainer)
                     .WithPolymorphic(false)
                     .RaiseSync());
@@ -190,7 +190,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         {
             // Act & Assert - Should not throw
             Assert.DoesNotThrow(() => 
-                EventRaise.Event(new TestEvent())
+                RaiseEvent.Event(new TestEvent())
                     .WithContainer(_testContainer)
                     .WithPolymorphic()
                     .RaiseSync());
@@ -210,7 +210,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<TestEvent>.Register(evt => handlerCalled = true);
 
             // Act
-            EventRaise.Event(new TestEvent())
+            RaiseEvent.Event(new TestEvent())
                 .When(() => condition)
                 .RaiseSync();
 
@@ -228,7 +228,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<TestEvent>.Register(evt => handlerCalled = true);
 
             // Act
-            EventRaise.Event(new TestEvent())
+            RaiseEvent.Event(new TestEvent())
                 .When(() => condition)
                 .RaiseSync();
 
@@ -241,7 +241,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                EventRaise.Event(new TestEvent()).When(null));
+                RaiseEvent.Event(new TestEvent()).When(null));
         }
 
         [Test]
@@ -253,7 +253,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
 
             EventBus<TestEvent>.Register(evt => handlerCalled = true);
 
-            var raiser = EventRaise.Event(new TestEvent())
+            var raiser = RaiseEvent.Event(new TestEvent())
                 .When(() => condition);
 
             // Change condition after builder creation
@@ -277,7 +277,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             var testEvent = new TestEvent();
 
             // Act
-            var raiser1 = EventRaise.Event(testEvent);
+            var raiser1 = RaiseEvent.Event(testEvent);
             var raiser2 = raiser1.WithGlobalBus();
             var raiser3 = raiser2.WithContainer(_testContainer);
             var raiser4 = raiser3.WithPolymorphic(false);
@@ -300,7 +300,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             _testContainer.Register<TestEvent>(evt => handlerCalled = true);
 
             // Act
-            EventRaise.Event(new TestEvent(123, "fluent"))
+            RaiseEvent.Event(new TestEvent(123, "fluent"))
                 .WithContainer(_testContainer)
                 .WithPolymorphic(false)
                 .When(() => condition)
@@ -322,7 +322,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
 
             // Act & Assert
             var exception = Assert.Throws<InvalidOperationException>(() => 
-                EventRaise.Event(new TestEvent()).RaiseSync());
+                RaiseEvent.Event(new TestEvent()).RaiseSync());
             
             Assert.AreEqual("Test exception", exception.Message);
         }
@@ -332,7 +332,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         {
             // Act & Assert
             Assert.DoesNotThrow(() => 
-                EventRaise.Event(new TestEvent()).RaiseSync());
+                RaiseEvent.Event(new TestEvent()).RaiseSync());
         }
 
         #endregion
@@ -350,7 +350,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<TestEvent>.Register(evt => globalHandlerCalled = true);
 
             // Act - Configure container, then global, then container again
-            EventRaise.Event(new TestEvent())
+            RaiseEvent.Event(new TestEvent())
                 .WithContainer(_testContainer)
                 .WithGlobalBus()
                 .WithContainer(_testContainer)
@@ -369,7 +369,7 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<EmptyEvent>.Register(() => handlerCalled = true);
 
             // Act
-            EventRaise.Event<EmptyEvent>().RaiseSync();
+            RaiseEvent.Event<EmptyEvent>().RaiseSync();
 
             // Assert
             Assert.IsTrue(handlerCalled);

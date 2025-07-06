@@ -107,11 +107,8 @@ namespace DGP.EventBus
         public UniTask RaiseAsync() => RaiseSequentialAsync();
 #endif
     }
-
-    /// <summary>
-    /// Entry point for creating event raise builders
-    /// </summary>
-    public static class EventRaise
+    
+    public static class RaiseEvent
     {
         /// <summary>
         /// Create a builder for raising an event
