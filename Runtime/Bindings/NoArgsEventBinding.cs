@@ -63,20 +63,30 @@ namespace DGP.EventBus.Bindings
 #endif
         
         /// <summary>
-        /// Checks if this binding wraps the given delegate
+        /// Checks if this binding wraps the given delegate using method and target equality
         /// </summary>
         public bool MatchesHandler(Action handler)
         {
-            return ReferenceEquals(_syncHandler, handler);
+            if (_syncHandler == null || handler == null)
+                return false;
+                
+            // Use method and target equality instead of reference equality
+            return _syncHandler.Method == handler.Method && 
+                   ReferenceEquals(_syncHandler.Target, handler.Target);
         }
 
 #if UNITASK_SUPPORT
         /// <summary>
-        /// Checks if this binding wraps the given async delegate
+        /// Checks if this binding wraps the given async delegate using method and target equality
         /// </summary>
         public bool MatchesHandler(Func<UniTask> handler)
         {
-            return ReferenceEquals(_asyncHandler, handler);
+            if (_asyncHandler == null || handler == null)
+                return false;
+                
+            // Use method and target equality instead of reference equality
+            return _asyncHandler.Method == handler.Method && 
+                   ReferenceEquals(_asyncHandler.Target, handler.Target);
         }
 #endif
     }
