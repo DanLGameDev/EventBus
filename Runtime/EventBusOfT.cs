@@ -117,6 +117,7 @@ namespace DGP.EventBus
         /// <summary>
         /// Raises the event synchronously on this specific type only, invoking all registered bindings sequentially
         /// </summary>
+		[Obsolete("Use RaiseAsync instead")]
         public static void Raise(T @event = default)
         {
             BindingsContainer.Raise(@event);
