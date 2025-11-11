@@ -1,5 +1,11 @@
 name: Test package
 on: [push, pull_request]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   testAllModes:
     name: Test in ${{ matrix.testMode }}
@@ -10,7 +16,7 @@ jobs:
         projectPath:
           - Package
         unityVersion:
-          - 6000.2.10f1  # Closest available Unity 6 version
+          - 6000.2.10f1
         testMode:
           - playmode
           - editmode
