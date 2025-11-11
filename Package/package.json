@@ -1,5 +1,5 @@
 {
-  "name": "eventbus",
+  "name": "com.dgp.eventbus",
   "version": "1.9.2",
   "displayName": "EventBus",
   "author": {
