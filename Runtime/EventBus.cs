@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using DGP.EventBus.Bindings;
 
 namespace DGP.EventBus
 {
