@@ -22,6 +22,8 @@ namespace DGP.EventBus
 
         /// <summary>
         /// Registers a typed action handler
+        /// <param name="handler">The handler to register</param>
+        /// <param name="priority">The priority of the handler (higher values are invoked first)</param>
         /// </summary>
         public IEventBinding<T> Register(Action<T> handler, int priority = 0)
         {
@@ -41,6 +43,8 @@ namespace DGP.EventBus
 
         /// <summary>
         /// Registers a no-args action handler
+        /// <param name="handler">The handler to register</param>
+        /// <param name="priority">The priority of the handler (higher values are invoked first)</param>
         /// </summary>
         public IEventBindingNoArgs Register(Action handler, int priority = 0)
         {
@@ -61,6 +65,8 @@ namespace DGP.EventBus
         #if UNITASK_SUPPORT
         /// <summary>
         /// Registers a typed async handler
+        /// <param name="handler">The handler to register</param>
+        /// <param name="priority">The priority of the handler (higher values are invoked first)</param>
         /// </summary>
         public IEventBinding<T> Register(Func<T, UniTask> handler, int priority = 0)
         {
@@ -80,6 +86,8 @@ namespace DGP.EventBus
 
         /// <summary>
         /// Registers a no-args async handler
+        /// <param name="handler">The handler to register</param>
+        /// <param name="priority">The priority of the handler (higher values are invoked first)</param>
         /// </summary>
         public IEventBindingNoArgs Register(Func<UniTask> handler, int priority = 0)
         {
@@ -267,11 +275,9 @@ namespace DGP.EventBus
             
             foreach (var binding in bindingsSnapshot)
             {
-                // Skip if binding was removed during iteration
                 if (!_bindings.Contains(binding))
                     continue;
-
-                // Check if event propagation should stop
+                
                 if (eventData is IStoppableEvent stoppable && stoppable.StopPropagation)
                     break;
                     
@@ -289,16 +295,13 @@ namespace DGP.EventBus
         #if UNITASK_SUPPORT
         private async UniTask InvokeBindingsSequentialAsync(T eventData)
         {
-            // Create a snapshot to allow safe modification during iteration
             var bindingsSnapshot = _bindings.ToArray();
             
             foreach (var binding in bindingsSnapshot)
             {
-                // Skip if binding was removed during iteration
                 if (!_bindings.Contains(binding))
                     continue;
-
-                // Check if event propagation should stop
+                
                 if (eventData is IStoppableEvent stoppable && stoppable.StopPropagation)
                     break;
                     

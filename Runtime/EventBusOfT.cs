@@ -30,6 +30,8 @@ namespace DGP.EventBus
         
         /// <summary>
         /// Registers a typed action handler
+        /// <param name="onEvent">The action to invoke when the event is raised</param>
+        /// <param name="priority">The priority of the binding (higher priority bindings are invoked first)</param>
         /// </summary>
         public static IEventBinding<T> Register(Action<T> onEvent, int priority = 0)
         {
@@ -38,6 +40,8 @@ namespace DGP.EventBus
 
         /// <summary>
         /// Registers a no-args action handler
+        /// <param name="onEventNoArgs">The action to invoke when the event is raised</param>
+        /// <param name="priority">The priority of the handler (higher values are invoked first)</param>
         /// </summary>
         public static IEventBindingNoArgs Register(Action onEventNoArgs, int priority = 0)
         {
@@ -55,6 +59,8 @@ namespace DGP.EventBus
 
         /// <summary>
         /// Registers a no-args async handler
+        /// <param name="onEventNoArgsUniAsync">The async function to invoke when the event is raised</param>
+        /// <param name="priority">The priority of the handler (higher values are invoked first)</param>
         /// </summary>
         public static IEventBindingNoArgs Register(Func<UniTask> onEventNoArgsUniAsync, int priority = 0)
         {
