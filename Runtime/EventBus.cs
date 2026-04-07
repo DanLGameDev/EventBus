@@ -10,6 +10,7 @@ namespace DGP.EventBus
         internal static void RegisterContainer<T>(EventBindingContainer<T> container) where T : IEvent
         {
             registeredContainers[typeof(T)] = container;
+            DGP.EventBus.Bridges.EventBusBridge.NotifyContainerRegistered(typeof(T), container);
         }
     
         public static void Raise<T>(T @event = default) where T : IEvent

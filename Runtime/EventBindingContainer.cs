@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DGP.EventBus.Bindings;
+using DGP.EventBus.Bridges;
 #if UNITASK_SUPPORT
 using Cysharp.Threading.Tasks;
 #endif
@@ -217,6 +218,7 @@ namespace DGP.EventBus
         /// </summary>
         public void Raise(T eventData = default)
         {
+            EventBusBridge.NotifyEventRaised(typeof(T));
             _isCurrentlyRaising = true;
 
             InvokeBindingsSync(eventData);
@@ -239,6 +241,7 @@ namespace DGP.EventBus
         /// </summary>
         public async UniTask RaiseSequentialAsync(T eventData = default)
         {
+            EventBusBridge.NotifyEventRaised(typeof(T));
             _isCurrentlyRaising = true;
 
             await InvokeBindingsSequentialAsync(eventData);
@@ -252,6 +255,7 @@ namespace DGP.EventBus
         /// </summary>
         public async UniTask RaiseConcurrentAsync(T eventData = default)
         {
+            EventBusBridge.NotifyEventRaised(typeof(T));
             _isCurrentlyRaising = true;
 
             await InvokeBindingsConcurrentAsync(eventData);
