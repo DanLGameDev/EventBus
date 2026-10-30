@@ -1,33 +1,38 @@
-using System;
-using System.Collections.Generic;
+using UnityEngine;
+#if UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+#endif
 
 namespace DGP.EventBus
 {
     public static class EventBus
     {
-        private static readonly Dictionary<Type, object> registeredContainers = new();
-    
-        internal static void RegisterContainer<T>(EventBindingContainer<T> container) where T : IEvent
-        {
-            registeredContainers[typeof(T)] = container;
-            DGP.EventBus.Bridges.EventBusBridge.NotifyContainerRegistered(typeof(T), container);
-        }
-    
-        public static void Raise<T>(T @event = default) where T : IEvent
-        {
-            var eventType = typeof(T);
-            
-            foreach (var (registeredType, container) in registeredContainers)
-            {
-                if (registeredType.IsAssignableFrom(eventType))
-                {
-                    if (@event is IStoppableEvent stoppable && stoppable.StopPropagation)
-                        break;
+        internal static readonly EventContainer Global = new();
 
-                    var raiseMethod = container.GetType().GetMethod("Raise");
-                    raiseMethod?.Invoke(container, new object[] { @event });
-                }
-            }
-        }
+        /// <summary>
+        /// Raises the event on the global bus, including handlers registered for any base type or interface of the event
+        /// </summary>
+        public static void Raise<T>(T @event = default) where T : IEvent => Global.Raise(@event);
+
+#if UNITASK_SUPPORT
+        /// <summary>
+        /// Raises the event on the global bus asynchronously and polymorphically, invoking bindings sequentially
+        /// </summary>
+        public static UniTask RaiseAsync<T>(T @event = default) where T : IEvent => Global.RaiseSequentialAsync(@event);
+
+        /// <summary>
+        /// Raises the event on the global bus asynchronously and polymorphically, invoking bindings sequentially
+        /// </summary>
+        public static UniTask RaiseSequentialAsync<T>(T @event = default) where T : IEvent => Global.RaiseSequentialAsync(@event);
+
+        /// <summary>
+        /// Raises the event on the global bus asynchronously and polymorphically, invoking bindings concurrently
+        /// </summary>
+        public static UniTask RaiseConcurrentAsync<T>(T @event = default) where T : IEvent => Global.RaiseConcurrentAsync(@event);
+#endif
+
+        // With Domain Reload disabled, static state survives between play sessions
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ClearGlobalBindings() => Global.ClearAllBindings();
     }
 }

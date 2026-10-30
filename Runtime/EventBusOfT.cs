@@ -9,11 +9,11 @@ namespace DGP.EventBus
 {
     public static class EventBus<T> where T : IEvent
     {
-        public static readonly EventBindingContainer<T> BindingsContainer = new();
-        
+        public static readonly EventBindingContainer<T> BindingsContainer;
+
         static EventBus()
         {
-            EventBus.RegisterContainer(BindingsContainer);
+            BindingsContainer = EventBus.Global.GetContainer<T>();
         }
         
         internal static IReadOnlyList<IEventBinding> Bindings => BindingsContainer.Bindings;

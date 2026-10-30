@@ -1,3 +1,18 @@
+## [2.0.0] - 2026-10-30
+### Breaking
+- Removed the `EventBus.Bridges` assembly and `EventBusBridge`; editor tooling reads `EventBusDiagnostics` instead
+- Polymorphic raises (`EventBus.Raise`, `EventContainer.Raise`) now throw the handler's exception directly instead of wrapping it in `TargetInvocationException`
+- `Register(binding)` throws `ArgumentException` for a binding that cannot be invoked for the container's event type
+### Changes
+- `EventBus` gains `RaiseAsync`, `RaiseSequentialAsync` and `RaiseConcurrentAsync` for polymorphic async raising on the global bus
+- The global bus is cleared on entering play mode, so handlers no longer survive between sessions with Domain Reload disabled
+- Bindings with equal priority are invoked in registration order
+- `TypedEventBinding<T>` and `NoArgsEventBinding` share an `EventBinding` base exposing `Handler` and `IsAsync`
+### Fixes
+- A handler throwing during a raise no longer leaves later deregistrations deferred indefinitely
+- Nested raises of the same event no longer end deferred removal early
+- Registering a handler for a new event type during a polymorphic raise no longer throws
+
 ## [1.9.0] - 2025-07-04
 ### Changes
 - Refactored binding implementation

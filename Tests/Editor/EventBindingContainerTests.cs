@@ -450,11 +450,56 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             Assert.AreEqual(2, bindings.Count);
             Assert.AreEqual(5, bindings[0].Priority);
             Assert.AreEqual(5, bindings[1].Priority);
-            // Both should be TypedEventBinding<TestEvent>, verify they match the handlers
-            var typedBinding1 = bindings[0] as TypedEventBinding<TestEvent>;
-            var typedBinding2 = bindings[1] as TypedEventBinding<TestEvent>;
-            Assert.IsTrue(typedBinding1.MatchesHandler(handler1) || typedBinding1.MatchesHandler(handler2));
-            Assert.IsTrue(typedBinding2.MatchesHandler(handler1) || typedBinding2.MatchesHandler(handler2));
+            Assert.AreSame(binding1, bindings[0]);
+            Assert.AreSame(binding2, bindings[1]);
+        }
+
+        [Test]
+        public void Register_ManyHandlersWithMixedPriorities_KeepsRegistrationOrderWithinPriority()
+        {
+            // Arrange
+            var expectedLow = new System.Collections.Generic.List<IEventBinding>();
+            var expectedHigh = new System.Collections.Generic.List<IEventBinding>();
+
+            // Act
+            for (var i = 0; i < 20; i++) {
+                var priority = i % 2 == 0 ? 1 : 10;
+                // Capturing a per-iteration local gives each handler its own target, so none are deduplicated
+                var binding = _container.Register((Action<TestEvent>)(evt => _ = priority), priority);
+                (priority == 10 ? expectedHigh : expectedLow).Add(binding);
+            }
+
+            // Assert
+            CollectionAssert.AreEqual(expectedHigh.Concat(expectedLow).ToList(), _container.Bindings.ToList());
+        }
+
+        #endregion
+
+        #region Binding Validation Tests
+
+        [Test]
+        public void Register_PreCreatedBindingForOtherEventType_ThrowsArgumentException()
+        {
+            // Arrange
+            var binding = new TypedEventBinding<EmptyEvent>(evt => { });
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _container.Register(binding));
+            Assert.AreEqual(0, _container.Bindings.Count);
+        }
+
+        [Test]
+        public void Register_TypedHandler_BindingExposesOriginalHandler()
+        {
+            // Arrange
+            Action<TestEvent> handler = evt => { };
+
+            // Act
+            var binding = (EventBinding)_container.Register(handler);
+
+            // Assert
+            Assert.AreSame(handler, binding.Handler);
+            Assert.IsFalse(binding.IsAsync);
         }
 
         #endregion

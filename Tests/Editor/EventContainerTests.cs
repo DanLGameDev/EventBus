@@ -753,6 +753,47 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             Assert.IsFalse(executionOrder.Contains("Unrelated"));
         }
 
+        [Test]
+        public void Raise_Polymorphic_BaseHandlerRegisteredAfterEarlierRaise_IsInvoked()
+        {
+            // Arrange
+            var executionOrder = new List<string>();
+            _container.Register<ContainerDerivedEvent>(evt => executionOrder.Add("Derived"));
+            _container.Raise(new ContainerDerivedEvent("first", 1), polymorphic: true);
+            executionOrder.Clear();
+
+            // Act
+            _container.Register<IContainerBaseEvent>(evt => executionOrder.Add("Base"));
+            _container.Raise(new ContainerDerivedEvent("second", 2), polymorphic: true);
+
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
+            Assert.Contains("Base", executionOrder);
+        }
+
+        [Test]
+        public void Raise_Polymorphic_HandlerRegistersNewEventType_DoesNotThrow()
+        {
+            // Arrange
+            _container.Register<ContainerDerivedEvent>(evt => _container.Register<TestEvent>(e => { }));
+            _container.Register<IContainerBaseEvent>(evt => { });
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => _container.Raise(new ContainerDerivedEvent("test", 1), polymorphic: true));
+        }
+
+        [Test]
+        public void Raise_Polymorphic_HandlerThrows_PropagatesOriginalException()
+        {
+            // Arrange
+            _container.Register<IContainerBaseEvent>(evt => throw new InvalidOperationException("Base exception"));
+
+            // Act & Assert
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                _container.Raise(new ContainerDerivedEvent("test", 1), polymorphic: true));
+            Assert.AreEqual("Base exception", exception.Message);
+        }
+
         #endregion
     }
 }

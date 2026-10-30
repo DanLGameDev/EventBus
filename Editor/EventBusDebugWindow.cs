@@ -1,10 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using DGP.EventBus.Bindings;
-using DGP.EventBus.Bridges;
 using UnityEditor;
 using UnityEngine;
 
@@ -38,10 +35,6 @@ namespace DGP.EventBus.Editor
         private Vector2 _logScrollPos;
         private bool _autoScrollLog = true;
 
-        // ── Reflection cache (static: survives window close/reopen) ───────────
-        private static readonly Dictionary<Type, FieldInfo> _syncFieldCache  = new();
-        private static readonly Dictionary<Type, FieldInfo> _asyncFieldCache = new();
-
         // ── Cached GUIStyles (lazy: must not init before first OnGUI) ─────────
         private GUIStyle _priorityBadgeStyle;
         private GUIStyle _asyncBadgeStyle;
@@ -56,19 +49,19 @@ namespace DGP.EventBus.Editor
 
         private void OnEnable()
         {
-            EventBusBridge.OnEventRaised         += HandleEventRaised;
-            EventBusBridge.OnContainerRegistered += HandleContainerRegistered;
-            EditorApplication.update             += OnEditorUpdate;
+            EventBusDiagnostics.EventRaised            += HandleEventRaised;
+            EventBusDiagnostics.GlobalContainerCreated += HandleContainerCreated;
+            EditorApplication.update                   += OnEditorUpdate;
 
-            foreach (var kvp in EventBusBridge.RegisteredContainers)
-                EnsureTypeTracked(kvp.Key);
+            foreach (var container in EventBusDiagnostics.GlobalContainers)
+                EnsureTypeTracked(container.EventType);
         }
 
         private void OnDisable()
         {
-            EventBusBridge.OnEventRaised         -= HandleEventRaised;
-            EventBusBridge.OnContainerRegistered -= HandleContainerRegistered;
-            EditorApplication.update             -= OnEditorUpdate;
+            EventBusDiagnostics.EventRaised            -= HandleEventRaised;
+            EventBusDiagnostics.GlobalContainerCreated -= HandleContainerCreated;
+            EditorApplication.update                   -= OnEditorUpdate;
         }
 
         private void HandleEventRaised(Type eventType)
@@ -83,9 +76,9 @@ namespace DGP.EventBus.Editor
             }
         }
 
-        private void HandleContainerRegistered(Type eventType, object _)
+        private void HandleContainerCreated(EventBindingContainer container)
         {
-            EnsureTypeTracked(eventType);
+            EnsureTypeTracked(container.EventType);
             Repaint();
         }
 
@@ -141,7 +134,7 @@ namespace DGP.EventBus.Editor
         private void DrawLivePanel(Rect rect)
         {
             // Snapshot to avoid mutating the dict mid-iteration if a container registers
-            var containers = new List<KeyValuePair<Type, object>>(EventBusBridge.RegisteredContainers);
+            var containers = new List<EventBindingContainer>(EventBusDiagnostics.GlobalContainers);
 
             GUILayout.BeginArea(rect);
             _liveScrollPos = EditorGUILayout.BeginScrollView(_liveScrollPos);
@@ -153,16 +146,17 @@ namespace DGP.EventBus.Editor
             else
             {
                 double now = EditorApplication.timeSinceStartup;
-                foreach (var kvp in containers)
-                    DrawEventTypeRow(kvp.Key, kvp.Value, now);
+                foreach (var container in containers)
+                    DrawEventTypeRow(container, now);
             }
 
             EditorGUILayout.EndScrollView();
             GUILayout.EndArea();
         }
 
-        private void DrawEventTypeRow(Type eventType, object container, double now)
+        private void DrawEventTypeRow(EventBindingContainer container, double now)
         {
+            var eventType = container.EventType;
             float flashT = 0f;
             if (_flashTimestamps.TryGetValue(eventType, out double ts))
                 flashT = Mathf.Clamp01(1f - (float)((now - ts) / FlashDuration));
@@ -172,7 +166,7 @@ namespace DGP.EventBus.Editor
             Rect rowRect = EditorGUILayout.BeginVertical();
             EditorGUI.DrawRect(rowRect, rowBg);
 
-            int count = GetBindingCount(container);
+            int count = container.Count;
             string header = $"{eventType.Name}  ({count} handler{(count == 1 ? "" : "s")})";
 
             if (!_foldouts.TryGetValue(eventType, out bool open))
@@ -190,16 +184,11 @@ namespace DGP.EventBus.Editor
             EditorGUILayout.Space(2f);
         }
 
-        private void DrawHandlerRows(object container)
+        private void DrawHandlerRows(EventBindingContainer container)
         {
-            IEnumerable bindings = GetBindings(container);
-            if (bindings == null) return;
-
             EditorGUI.indentLevel++;
-            foreach (object rawBinding in bindings)
+            foreach (var binding in container.Bindings)
             {
-                if (rawBinding is not IEventBinding binding) continue;
-
                 var (methodName, targetType, isAsync) = GetHandlerInfo(binding);
                 string cleanMethod = CleanMethodName(methodName);
 
@@ -268,50 +257,20 @@ namespace DGP.EventBus.Editor
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // Reflection helpers
+        // Binding helpers
         // ─────────────────────────────────────────────────────────────────────
-
-        private static IEnumerable GetBindings(object container)
-        {
-            return container.GetType()
-                .GetProperty("Bindings", BindingFlags.Public | BindingFlags.Instance)
-                ?.GetValue(container) as IEnumerable;
-        }
-
-        private static int GetBindingCount(object container)
-        {
-            var prop = container.GetType()
-                .GetProperty("Count", BindingFlags.Public | BindingFlags.Instance);
-            return prop != null ? (int)prop.GetValue(container) : 0;
-        }
 
         private static (string method, string target, bool isAsync) GetHandlerInfo(IEventBinding binding)
         {
-            Type bindingType = binding.GetType();
+            if (binding is not EventBinding eventBinding)
+                return ("Invoke", binding.GetType().Name, false);
 
-            // Try _syncHandler first, then _asyncHandler
-            foreach (var (fieldName, cache, isAsync) in new[]
-            {
-                ("_syncHandler",  _syncFieldCache,  false),
-                ("_asyncHandler", _asyncFieldCache, true),
-            })
-            {
-                if (!cache.TryGetValue(bindingType, out FieldInfo fi))
-                    cache[bindingType] = fi = bindingType.GetField(fieldName,
-                        BindingFlags.NonPublic | BindingFlags.Instance);
+            var handler = eventBinding.Handler;
+            string targetName = handler.Target?.GetType().Name
+                             ?? handler.Method.DeclaringType?.Name
+                             ?? "static";
 
-                if (fi == null) continue;
-
-                if (fi.GetValue(binding) is Delegate del)
-                {
-                    string targetName = del.Target?.GetType().Name
-                                     ?? del.Method.DeclaringType?.Name
-                                     ?? "static";
-                    return (del.Method.Name, targetName, isAsync);
-                }
-            }
-
-            return ("<unknown>", "<unknown>", false);
+            return (handler.Method.Name, targetName, eventBinding.IsAsync);
         }
 
         // Strips compiler-generated wrapper noise from lambda/local method names.

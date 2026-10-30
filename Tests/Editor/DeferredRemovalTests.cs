@@ -231,5 +231,63 @@ namespace DGP.EventBus.Editor.Tests
         }
 
         #endregion
+
+        #region Raise Cycle Tests
+
+        [Test]
+        public void Deregister_AfterHandlerThrew_RemovesImmediately()
+        {
+            // Arrange
+            var container = new EventBindingContainer<TestEvent>();
+            var otherCalls = 0;
+
+            Action<TestEvent> throwingHandler = evt => throw new InvalidOperationException("Boom");
+            Action<TestEvent> otherHandler = evt => otherCalls++;
+
+            container.Register(throwingHandler, 10);
+            container.Register(otherHandler, 5);
+            Assert.Throws<InvalidOperationException>(() => container.Raise(new TestEvent()));
+
+            // Act
+            container.Deregister(otherHandler);
+            container.Deregister(throwingHandler);
+            container.Raise(new TestEvent());
+
+            // Assert
+            Assert.AreEqual(0, container.Bindings.Count, "Deregistration after a throwing raise should not be deferred");
+            Assert.AreEqual(0, otherCalls, "Deregistered handler should not be invoked by the next raise");
+        }
+
+        [Test]
+        public void Deregister_AfterNestedRaiseCompletes_StillDefersUntilOuterRaiseCompletes()
+        {
+            // Arrange
+            var container = new EventBindingContainer<TestEvent>();
+            var depth = 0;
+            var countDuringOuterRaise = -1;
+
+            Action<TestEvent> handlerToRemove = evt => { };
+            Action<TestEvent> nestingHandler = evt =>
+            {
+                depth++;
+                if (depth == 1) {
+                    container.Raise(new TestEvent());
+                    container.Deregister(handlerToRemove);
+                    countDuringOuterRaise = container.Bindings.Count;
+                }
+            };
+
+            container.Register(nestingHandler, 10);
+            container.Register(handlerToRemove, 5);
+
+            // Act
+            container.Raise(new TestEvent());
+
+            // Assert
+            Assert.AreEqual(2, countDuringOuterRaise, "Removal should stay deferred while the outer raise is running");
+            Assert.AreEqual(1, container.Bindings.Count);
+        }
+
+        #endregion
     }
 }

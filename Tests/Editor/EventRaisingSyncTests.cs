@@ -312,15 +312,14 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         }
 
         [Test]
-        public void EventBus_Raise_HandlerThrowsException_PropagatesWrappedException()
+        public void EventBus_Raise_HandlerThrowsException_PropagatesException()
         {
             // Arrange
             EventBus<TestEvent>.Register(evt => throw new InvalidOperationException("Static EventBus exception"));
 
             // Act & Assert
-            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => EventBus.Raise(new TestEvent()));
-            Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
-            Assert.AreEqual("Static EventBus exception", exception.InnerException.Message);
+            var exception = Assert.Throws<InvalidOperationException>(() => EventBus.Raise(new TestEvent()));
+            Assert.AreEqual("Static EventBus exception", exception.Message);
         }
 
         #endregion
@@ -418,9 +417,8 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             container.Register<TestEvent>(evt => throw new InvalidOperationException("Container exception"));
 
             // Act & Assert
-            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => container.Raise(new TestEvent()));
-            Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
-            Assert.AreEqual("Container exception", exception.InnerException.Message);
+            var exception = Assert.Throws<InvalidOperationException>(() => container.Raise(new TestEvent()));
+            Assert.AreEqual("Container exception", exception.Message);
         }
 
         #endregion

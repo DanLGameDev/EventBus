@@ -195,10 +195,9 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<DerivedEvent>.Register(evt => derivedHandlerCalled = true);
 
             // Act & Assert
-            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => 
+            var exception = Assert.Throws<InvalidOperationException>(() => 
                 EventBus.Raise(new DerivedEvent("test", 1)));
             
-            Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
             Assert.IsFalse(derivedHandlerCalled, "Derived handler should not be called if base handler throws");
         }
 
@@ -212,10 +211,9 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<DerivedEvent>.Register(evt => throw new InvalidOperationException("Derived exception"));
 
             // Act & Assert
-            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => 
+            var exception = Assert.Throws<InvalidOperationException>(() => 
                 EventBus.Raise(new DerivedEvent("test", 1)));
             
-            Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
             // baseHandlerCalled state depends on execution order, which varies
         }
 

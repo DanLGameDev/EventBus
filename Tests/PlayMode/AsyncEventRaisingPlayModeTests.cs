@@ -10,6 +10,7 @@ using Cysharp.Threading.Tasks;
 using DGP.EventBus;
 using DGP.EventBus.Bindings;
 using DGP.EventBus.Editor.Tests;
+using DGP.EventBus.Editor.Tests.EditMode;
 
 namespace DGP.EventBus.Editor.Tests.PlayMode
 {
@@ -21,6 +22,8 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             EventBus<TestEvent>.ClearAllBindings();
             EventBus<EmptyEvent>.ClearAllBindings();
             EventBus<PriorityTestEvent>.ClearAllBindings();
+            EventBus<IBaseEvent>.ClearAllBindings();
+            EventBus<DerivedEvent>.ClearAllBindings();
         }
 
         [TearDown]
@@ -29,6 +32,8 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             EventBus<TestEvent>.ClearAllBindings();
             EventBus<EmptyEvent>.ClearAllBindings();
             EventBus<PriorityTestEvent>.ClearAllBindings();
+            EventBus<IBaseEvent>.ClearAllBindings();
+            EventBus<DerivedEvent>.ClearAllBindings();
         }
 
 #if UNITASK_SUPPORT
@@ -565,6 +570,52 @@ namespace DGP.EventBus.Editor.Tests.PlayMode
             Assert.AreEqual(3, executionOrder.Count);
             Assert.AreEqual("AsyncHandler", executionOrder[1]);
             Assert.AreEqual("NewHandler", executionOrder[2]);
+        }
+
+        #endregion
+
+        #region Global Bus Polymorphic Async Tests
+
+        [UnityTest]
+        public IEnumerator EventBus_RaiseSequentialAsync_InvokesBaseAndDerivedHandlers()
+        {
+            // Arrange
+            var executionOrder = new List<string>();
+
+            EventBus<IBaseEvent>.Register((Func<IBaseEvent, UniTask>)(async evt =>
+            {
+                await UniTask.Delay(10);
+                executionOrder.Add("Base");
+            }));
+            EventBus<DerivedEvent>.Register(evt => executionOrder.Add("Derived"));
+
+            // Act
+            var task = EventBus.RaiseSequentialAsync(new DerivedEvent("test", 1)).AsTask();
+            yield return new WaitUntil(() => task.IsCompleted);
+            if (task.IsFaulted) throw task.Exception;
+
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
+            Assert.Contains("Base", executionOrder);
+            Assert.Contains("Derived", executionOrder);
+        }
+
+        [UnityTest]
+        public IEnumerator EventBus_RaiseConcurrentAsync_InvokesBaseAndDerivedHandlers()
+        {
+            // Arrange
+            var executionOrder = new List<string>();
+
+            EventBus<IBaseEvent>.Register(evt => executionOrder.Add("Base"));
+            EventBus<DerivedEvent>.Register(evt => executionOrder.Add("Derived"));
+
+            // Act
+            var task = EventBus.RaiseConcurrentAsync(new DerivedEvent("test", 1)).AsTask();
+            yield return new WaitUntil(() => task.IsCompleted);
+            if (task.IsFaulted) throw task.Exception;
+
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
         }
 
         #endregion

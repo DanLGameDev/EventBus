@@ -152,7 +152,7 @@ EventBus<DamageEvent>.Register(UpdateUI, priority: 0);       // Runs last
 
 ### Polymorphic Events
 
-Handlers for base types and interfaces are automatically triggered:
+Raising through the non-generic `EventBus` (or an `EventContainer`, which is polymorphic by default) also triggers handlers registered for base types and interfaces. `EventBus<T>.Raise` only reaches handlers for `T` itself.
 
 ```csharp
 public interface IGameEvent : IEvent { }
@@ -162,6 +162,10 @@ public struct SpecificEvent : IGameEvent { }
 EventBus<IGameEvent>.Register(OnAnyGameEvent);
 
 // This raises to both IGameEvent and SpecificEvent handlers
+EventBus.Raise(new SpecificEvent());
+await EventBus.RaiseAsync(new SpecificEvent());
+
+// This raises to SpecificEvent handlers only
 EventBus<SpecificEvent>.Raise(new SpecificEvent());
 ```
 

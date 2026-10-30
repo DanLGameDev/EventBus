@@ -216,9 +216,8 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<TestEvent>.Register(evt => throw new InvalidOperationException("Test exception"));
 
             // Act & Assert
-            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => EventBus.Raise(new TestEvent()));
-            Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
-            Assert.AreEqual("Test exception", exception.InnerException.Message);
+            var exception = Assert.Throws<InvalidOperationException>(() => EventBus.Raise(new TestEvent()));
+            Assert.AreEqual("Test exception", exception.Message);
         }
 
         [Test]
@@ -233,10 +232,9 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             // Act
             try {
                 EventBus.Raise(new TestEvent());
-            } catch (System.Reflection.TargetInvocationException ex) {
-                // Expected exception - verify it's the right inner exception
-                Assert.IsInstanceOf<InvalidOperationException>(ex.InnerException);
-                Assert.AreEqual("First handler exception", ex.InnerException.Message);
+            } catch (InvalidOperationException ex) {
+                // Expected exception
+                Assert.AreEqual("First handler exception", ex.Message);
             }
 
             // Assert
@@ -429,10 +427,9 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<StaticDerivedEvent>.Register(evt => derivedHandlerCalled = true);
 
             // Act & Assert
-            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => 
+            var exception = Assert.Throws<InvalidOperationException>(() => 
                 EventBus.Raise(new StaticDerivedEvent("test", 1)));
             
-            Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
             Assert.IsFalse(derivedHandlerCalled, "Derived handler should not be called if base handler throws");
         }
 
@@ -446,10 +443,9 @@ namespace DGP.EventBus.Editor.Tests.EditMode
             EventBus<StaticDerivedEvent>.Register(evt => throw new InvalidOperationException("Derived exception"));
 
             // Act & Assert
-            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => 
+            var exception = Assert.Throws<InvalidOperationException>(() => 
                 EventBus.Raise(new StaticDerivedEvent("test", 1)));
             
-            Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
         }
 
         #endregion

@@ -5,88 +5,50 @@ using Cysharp.Threading.Tasks;
 
 namespace DGP.EventBus.Bindings
 {
-    public class NoArgsEventBinding : IEventBindingNoArgs
+    public class NoArgsEventBinding : EventBinding, IEventBindingNoArgs
     {
         private readonly Action _syncHandler;
 #if UNITASK_SUPPORT
         private readonly Func<UniTask> _asyncHandler;
 #endif
-        
-        public int Priority { get; }
 
-        // Constructor for sync handlers
-        public NoArgsEventBinding(Action handler, int priority = 0)
+        public NoArgsEventBinding(Action handler, int priority = 0) : base(priority)
         {
             _syncHandler = handler ?? throw new ArgumentNullException(nameof(handler));
-            Priority = priority;
         }
 
 #if UNITASK_SUPPORT
-        // Constructor for async handlers
-        public NoArgsEventBinding(Func<UniTask> handler, int priority = 0)
+        public NoArgsEventBinding(Func<UniTask> handler, int priority = 0) : base(priority)
         {
             _asyncHandler = handler ?? throw new ArgumentNullException(nameof(handler));
-            Priority = priority;
         }
+
+        public override Delegate Handler => (Delegate)_syncHandler ?? _asyncHandler;
+        public override bool IsAsync => _asyncHandler != null;
+#else
+        public override Delegate Handler => _syncHandler;
+        public override bool IsAsync => false;
 #endif
 
         public void Invoke()
         {
-            if (_syncHandler != null)
-            {
-                _syncHandler();
-            }
 #if UNITASK_SUPPORT
-            else if (_asyncHandler != null)
-            {
-                // Block on async handler for sync invocation
+            if (_asyncHandler != null) {
                 _asyncHandler().GetAwaiter().GetResult();
+                return;
             }
 #endif
+            _syncHandler();
         }
 
 #if UNITASK_SUPPORT
         public UniTask InvokeAsync()
         {
             if (_asyncHandler != null)
-            {
                 return _asyncHandler();
-            }
-            else if (_syncHandler != null)
-            {
-                _syncHandler();
-                return UniTask.CompletedTask;
-            }
-            
-            return UniTask.CompletedTask;
-        }
-#endif
-        
-        /// <summary>
-        /// Checks if this binding wraps the given delegate using method and target equality
-        /// </summary>
-        public bool MatchesHandler(Action handler)
-        {
-            if (_syncHandler == null || handler == null)
-                return false;
-                
-            // Use method and target equality instead of reference equality
-            return _syncHandler.Method == handler.Method && 
-                   ReferenceEquals(_syncHandler.Target, handler.Target);
-        }
 
-#if UNITASK_SUPPORT
-        /// <summary>
-        /// Checks if this binding wraps the given async delegate using method and target equality
-        /// </summary>
-        public bool MatchesHandler(Func<UniTask> handler)
-        {
-            if (_asyncHandler == null || handler == null)
-                return false;
-                
-            // Use method and target equality instead of reference equality
-            return _asyncHandler.Method == handler.Method && 
-                   ReferenceEquals(_asyncHandler.Target, handler.Target);
+            _syncHandler();
+            return UniTask.CompletedTask;
         }
 #endif
     }
