@@ -117,7 +117,7 @@ namespace DGP.EventBus
         #region Raising Events
 
         /// <summary>
-        /// Raises the event synchronously. When polymorphic, handlers registered for any base type or interface of the event are also invoked
+        /// Raises the event synchronously. When polymorphic, handlers registered for the event's runtime type and any of its base types or interfaces are invoked
         /// </summary>
         public void Raise<TEvent>(TEvent @event = default, bool polymorphic = true) where TEvent : IEvent
         {
@@ -127,7 +127,7 @@ namespace DGP.EventBus
             }
 
             object boxedEvent = @event;
-            foreach (var container in GetAssignableContainers(typeof(TEvent))) {
+            foreach (var container in GetAssignableContainers(EventTypeOf(boxedEvent, typeof(TEvent)))) {
                 if (EventBindingContainer.IsPropagationStopped(boxedEvent))
                     break;
 
@@ -153,7 +153,7 @@ namespace DGP.EventBus
             }
 
             object boxedEvent = @event;
-            foreach (var container in GetAssignableContainers(typeof(TEvent))) {
+            foreach (var container in GetAssignableContainers(EventTypeOf(boxedEvent, typeof(TEvent)))) {
                 if (EventBindingContainer.IsPropagationStopped(boxedEvent))
                     break;
 
@@ -170,11 +170,14 @@ namespace DGP.EventBus
                 return GetContainer<TEvent>().RaiseConcurrentAsync(@event);
 
             object boxedEvent = @event;
-            return UniTask.WhenAll(GetAssignableContainers(typeof(TEvent)).Select(c => c.RaiseConcurrentBoxedAsync(boxedEvent)));
+            return UniTask.WhenAll(GetAssignableContainers(EventTypeOf(boxedEvent, typeof(TEvent))).Select(c => c.RaiseConcurrentBoxedAsync(boxedEvent)));
         }
 #endif
 
         #endregion
+
+        // Polymorphic raises dispatch on the runtime type, so an event raised through a base-typed variable still reaches its concrete handlers
+        private static Type EventTypeOf(object boxedEvent, Type declaredType) => boxedEvent?.GetType() ?? declaredType;
 
         // Returns an array rather than iterating _containers so a handler can touch a new event type mid-raise
         private EventBindingContainer[] GetAssignableContainers(Type eventType)

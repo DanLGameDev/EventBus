@@ -342,5 +342,129 @@ namespace DGP.EventBus.Editor.Tests.EditMode
         }
 
         #endregion
+
+        #region Runtime Type Dispatch Tests
+
+        [Test]
+        public void EventBus_Raise_ThroughBaseTypedVariable_TriggersBaseAndDerivedHandlers()
+        {
+            // Arrange
+            var executionOrder = new List<string>();
+
+            EventBus<IBaseEvent>.Register(evt => executionOrder.Add("Base"));
+            EventBus<DerivedEvent>.Register(evt => executionOrder.Add("Derived"));
+            EventBus<AnotherDerivedEvent>.Register(evt => executionOrder.Add("Another"));
+
+            IBaseEvent baseTyped = new DerivedEvent("test", 1);
+
+            // Act
+            EventBus.Raise(baseTyped);
+
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
+            Assert.Contains("Base", executionOrder);
+            Assert.Contains("Derived", executionOrder);
+        }
+
+        [Test]
+        public void EventContainer_Raise_ThroughBaseTypedVariable_TriggersDerivedHandlers()
+        {
+            // Arrange
+            var container = new EventContainer();
+            DerivedEvent received = default;
+
+            container.Register<DerivedEvent>(evt => received = evt);
+
+            IBaseEvent baseTyped = new DerivedEvent("container", 7);
+
+            // Act
+            container.Raise(baseTyped);
+
+            // Assert
+            Assert.AreEqual(7, received.DerivedValue);
+        }
+
+        [Test]
+        public void EventContainer_Raise_NonPolymorphicThroughBaseTypedVariable_OnlyTriggersDeclaredType()
+        {
+            // Arrange
+            var container = new EventContainer();
+            bool baseHandlerCalled = false;
+            bool derivedHandlerCalled = false;
+
+            container.Register<IBaseEvent>(evt => baseHandlerCalled = true);
+            container.Register<DerivedEvent>(evt => derivedHandlerCalled = true);
+
+            IBaseEvent baseTyped = new DerivedEvent("exact", 1);
+
+            // Act
+            container.Raise(baseTyped, polymorphic: false);
+
+            // Assert
+            Assert.IsTrue(baseHandlerCalled);
+            Assert.IsFalse(derivedHandlerCalled, "Non-polymorphic raise should only reach the declared type");
+        }
+
+        [Test]
+        public void EventContainer_Raise_NullBaseTypedEvent_TriggersDeclaredTypeHandlers()
+        {
+            // Arrange
+            var container = new EventContainer();
+            bool baseHandlerCalled = false;
+
+            container.Register<IBaseEvent>(() => baseHandlerCalled = true);
+
+            // Act
+            container.Raise<IBaseEvent>(null);
+
+            // Assert
+            Assert.IsTrue(baseHandlerCalled);
+        }
+
+#if UNITASK_SUPPORT
+        [Test]
+        public void EventContainer_RaiseSequentialAsync_ThroughBaseTypedVariable_TriggersDerivedHandlers()
+        {
+            // Arrange
+            var container = new EventContainer();
+            var executionOrder = new List<string>();
+
+            container.Register<IBaseEvent>(evt => executionOrder.Add("Base"));
+            container.Register<DerivedEvent>(evt => executionOrder.Add("Derived"));
+
+            IBaseEvent baseTyped = new DerivedEvent("sequential", 1);
+
+            // Act
+            container.RaiseSequentialAsync(baseTyped).GetAwaiter().GetResult();
+
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
+            Assert.Contains("Base", executionOrder);
+            Assert.Contains("Derived", executionOrder);
+        }
+
+        [Test]
+        public void EventContainer_RaiseConcurrentAsync_ThroughBaseTypedVariable_TriggersDerivedHandlers()
+        {
+            // Arrange
+            var container = new EventContainer();
+            var executionOrder = new List<string>();
+
+            container.Register<IBaseEvent>(evt => executionOrder.Add("Base"));
+            container.Register<DerivedEvent>(evt => executionOrder.Add("Derived"));
+
+            IBaseEvent baseTyped = new DerivedEvent("concurrent", 1);
+
+            // Act
+            container.RaiseConcurrentAsync(baseTyped).GetAwaiter().GetResult();
+
+            // Assert
+            Assert.AreEqual(2, executionOrder.Count);
+            Assert.Contains("Base", executionOrder);
+            Assert.Contains("Derived", executionOrder);
+        }
+#endif
+
+        #endregion
     }
 }

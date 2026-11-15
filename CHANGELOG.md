@@ -1,3 +1,7 @@
+## [2.1.0] - 2026-11-15
+### Changes
+- Polymorphic raises (`EventBus.Raise*`, `EventContainer.Raise*`) dispatch on the event's runtime type, so an event raised through a base-typed variable also reaches handlers registered for its concrete type
+
 ## [2.0.0] - 2026-10-30
 ### Breaking
 - Removed the `EventBus.Bridges` assembly and `EventBusBridge`; editor tooling reads `EventBusDiagnostics` instead
